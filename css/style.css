@@ -985,7 +985,94 @@ body {
   opacity: 0.8;
 }
 
-/* Canvas annotation markers */
+/* --- General marker styles --- */
+.te-marker {
+  position: absolute;
+  z-index: 10;
+  transition: box-shadow 150ms ease;
+}
+
+/* User-added annotation marker (blue dot + label) */
+.te-marker-user {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transform: translate(-6px, -6px);
+  cursor: grab;
+  user-select: none;
+}
+
+.te-marker-user:active {
+  cursor: grabbing;
+}
+
+.te-marker-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  flex-shrink: 0;
+}
+
+.te-marker-label {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  color: var(--color-text);
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.85;
+  transition: opacity 150ms ease;
+}
+
+.te-marker-user:hover .te-marker-label {
+  opacity: 1;
+}
+
+.te-marker-dragging {
+  z-index: 20;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+}
+
+.te-marker-dragging .te-marker-label {
+  opacity: 1;
+}
+
+/* Extracted text marker (green highlight box) */
+.te-marker-extracted {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 2px;
+  font-size: 0.65rem;
+  color: rgba(6, 95, 70, 0.7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  padding: 0 3px;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.te-marker-extracted:hover {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: rgba(16, 185, 129, 0.6);
+}
+
+.te-marker-muted {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Legacy marker support */
 .text-edit-marker {
   position: absolute;
   width: 12px;
@@ -1102,6 +1189,32 @@ body {
 
 .te-field-sm {
   flex: 1;
+}
+
+/* Analyzed text items list */
+.te-analyze-status {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  padding: 4px 0;
+}
+
+.te-analyzed-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: rgba(16, 185, 129, 0.08);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  font-size: 0.75rem;
+}
+
+.te-analyzed-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
 }
 
 /* Annotations list */

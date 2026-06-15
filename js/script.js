@@ -21,6 +21,7 @@ const state = {
   fileSize: '',
   isProcessing: false,
   textAnnotations: [],       // Array of { id, pageIndex, text, x, y, fontSize, color }
+  extractedTextCache: {},    // pageIndex -> array of { text, x, y, fontSize, fontName, width, height }
   history: {
     past: [],      // past snapshots
     future: [],    // future snapshots for redo
@@ -64,6 +65,10 @@ const teX = $('#teX');
 const teY = $('#teY');
 const teAnnotationsSection = $('#teAnnotationsSection');
 const teAnnotationsList = $('#teAnnotationsList');
+const teAnalyzeBtn = $('#teAnalyzeBtn');
+const teAnalyzedSection = $('#teAnalyzedSection');
+const teAnalyzedList = $('#teAnalyzedList');
+const teAnalyzeStatus = $('#teAnalyzeStatus');
 
 // Conversion modal refs
 const exportImagesModal = $('#exportImagesModal');
@@ -510,6 +515,7 @@ async function loadPDF(file) {
     state.fileName = file.name.replace(/\.pdf$/i, '');
     state.fileSize = formatFileSize(file.size);
     state.textAnnotations = [];
+    state.extractedTextCache = {};
     state.history.past = [];
     state.history.future = [];
 
@@ -522,8 +528,6 @@ async function loadPDF(file) {
 
     // Save initial snapshot
     await saveSnapshot();
-    // Remove the initial snapshot from past (it's the starting point, not an undoable action)
-    // Actually keep it so undo can go back to original state
 
     await renderAllThumbnails();
     updateUI();
@@ -648,7 +652,7 @@ function createPageCard(pageIndex) {
         <polyline points="20 6 9 17 4 12"/>
       </svg>
     </div>
-    <div class="rotation-badge" id="rotationBadge-${pageIndex}"${rotationAngle ? ` style="display:block"` : ''}>${rotationAngle ? `${rotationAngle}°` : ''}</div>
+    <div class="rotation-badge" id="rotationBadge-${pageIndex}"${rotationAngle ? ` style="display:block"` : ''}>${rotationAngle ? `${rotationAngle}\u00B0` : ''}</div>
     <div class="page-thumbnail">
       <canvas class="page-canvas"></canvas>
     </div>
@@ -809,6 +813,11 @@ async function deletePages() {
     ann.pageIndex += shift;
   }
 
+  // Clear extracted text cache for removed pages
+  for (const idx of indicesToRemove) {
+    delete state.extractedTextCache[idx];
+  }
+
   state.selectedPages.clear();
 
   await syncPDFjsFromPDFLib();
@@ -871,6 +880,16 @@ async function reorderPages(fromIndex, toIndex) {
     }
   }
 
+  // Update extracted text cache indices
+  const newCache = {};
+  for (const [oldIdx, items] of Object.entries(state.extractedTextCache)) {
+    const newIdx = indexMap[parseInt(oldIdx)];
+    if (newIdx !== undefined) {
+      newCache[newIdx] = items;
+    }
+  }
+  state.extractedTextCache = newCache;
+
   await syncPDFjsFromPDFLib();
   await renderAllThumbnails();
   updateUI();
@@ -924,7 +943,7 @@ async function openPreview(pageIndex) {
     const page = await state.pdfjsDoc.getPage(pdfjsPageNum);
     const viewport = page.getViewport({ scale: 1.5 });
 
-    previewTitle.textContent = `Page ${pageIndex + 1}${state.fileName ? ` — ${state.fileName}.pdf` : ''}`;
+    previewTitle.textContent = `Page ${pageIndex + 1}${state.fileName ? ` \u2014 ${state.fileName}.pdf` : ''}`;
 
     previewBody.innerHTML = '';
     const canvas = document.createElement('canvas');
@@ -967,7 +986,7 @@ function openTextEditor() {
     return;
   }
 
-  textEditorTitle.textContent = `Add / Edit Text — Page ${targetPage + 1}`;
+  textEditorTitle.textContent = `Edit Text \u2014 Page ${targetPage + 1}`;
 
   // Clear form
   teText.value = '';
@@ -981,11 +1000,14 @@ function openTextEditor() {
   textEditorCanvas.dataset.editingId = '';
   textEditorCanvas.dataset.scale = TEXT_EDITOR_SCALE;
 
-  // Render page preview on canvas
-  renderTextEditorPreview(targetPage);
-
   // Update annotations list
   updateTextAnnotationsList(targetPage);
+
+  // Render page preview and analyze text (await both to avoid race)
+  await Promise.all([
+    renderTextEditorPreview(targetPage),
+    analyzePDFText(targetPage),
+  ]);
 
   textEditorModal.style.display = 'flex';
 }
@@ -1011,10 +1033,10 @@ async function renderTextEditorPreview(pageIndex) {
     const ctx = textEditorCanvas.getContext('2d');
     await page.render({ canvasContext: ctx, viewport }).promise;
 
-    // Draw existing annotation markers on canvas
+    // Draw annotation markers (user-added + extracted text)
     drawAnnotationMarkers(pageIndex);
 
-    // Set up click handler for placing text
+    // Set up click handler for placing new text
     textEditorCanvas.onclick = handleTextEditorCanvasClick;
 
   } catch (err) {
@@ -1023,42 +1045,298 @@ async function renderTextEditorPreview(pageIndex) {
   }
 }
 
-// --- Draw existing annotation markers on the text editor canvas ---
-function drawAnnotationMarkers(pageIndex) {
-  const annotations = state.textAnnotations.filter(a => a.pageIndex === pageIndex);
-  const existingMarkers = textEditorCanvasWrapper.querySelectorAll('.text-edit-marker');
-  existingMarkers.forEach(m => m.remove());
+// --- Analyze existing PDF text ---
+async function analyzePDFText(pageIndex) {
+  if (!state.pdfjsDoc) return;
 
-  for (const ann of annotations) {
-    const marker = document.createElement('div');
-    marker.className = 'text-edit-marker';
-    marker.dataset.annotationId = ann.id;
+  // If already cached, use cache
+  if (state.extractedTextCache[pageIndex]) {
+    renderAnalyzedList(pageIndex);
+    return;
+  }
 
-    const canvasX = ann.x * TEXT_EDITOR_SCALE;
-    const canvasY = textEditorCanvas.height - ann.y * TEXT_EDITOR_SCALE;
+  try {
+    if (teAnalyzeStatus) {
+      teAnalyzeStatus.textContent = 'Analyzing text...';
+      teAnalyzeStatus.style.display = 'block';
+    }
 
-    marker.style.left = `${canvasX}px`;
-    marker.style.top = `${canvasY}px`;
-    marker.title = ann.text;
-    marker.style.cursor = 'pointer';
+    const pdfjsPageNum = pageIndex + 1;
+    const page = await state.pdfjsDoc.getPage(pdfjsPageNum);
+    const textContent = await page.getTextContent();
+    const viewport = page.getViewport({ scale: 1 });
 
-    // Label showing the text
-    const label = document.createElement('span');
-    label.className = 'text-edit-marker-label';
-    label.textContent = ann.text;
-    marker.appendChild(label);
+    // Convert text items to our format with proper coordinates
+    const items = [];
+    for (const item of textContent.items) {
+      // item.transform is [scaleX, skewX, skewY, scaleY, translateX, translateY]
+      // In PDF coordinate system (origin at bottom-left)
+      const x = item.transform[4];
+      const y = item.transform[5];
+      // Estimate font size from transform (scaleY)
+      const fontSize = Math.round(Math.abs(item.transform[3]) * 100) / 100 || 12;
+      
+      items.push({
+        text: item.str,
+        x: x,
+        y: y,
+        fontSize: fontSize,
+        width: item.width || 0,
+        height: item.height || fontSize * 0.7,
+        fontName: item.fontName || 'Helvetica',
+      });
+    }
 
-    // Click on marker selects it for editing
-    marker.addEventListener('click', (e) => {
-      e.stopPropagation();
-      loadAnnotationIntoForm(ann.id);
-    });
+    state.extractedTextCache[pageIndex] = items;
 
-    textEditorCanvasWrapper.appendChild(marker);
+    if (teAnalyzeStatus) {
+      teAnalyzeStatus.textContent = `Found ${items.length} text element${items.length !== 1 ? 's' : ''}`;
+      setTimeout(() => {
+        if (teAnalyzeStatus) teAnalyzeStatus.style.display = 'none';
+      }, 2000);
+    }
+
+    // Re-draw markers with extracted text now available
+    drawAnnotationMarkers(pageIndex);
+    renderAnalyzedList(pageIndex);
+
+  } catch (err) {
+    console.error('Failed to analyze PDF text:', err);
+    if (teAnalyzeStatus) {
+      teAnalyzeStatus.textContent = 'Could not extract text from this PDF';
+      teAnalyzeStatus.style.display = 'block';
+    }
   }
 }
 
-// --- Handle click on text editor canvas ---
+// --- Render analyzed text list in controls panel ---
+function renderAnalyzedList(pageIndex) {
+  if (!teAnalyzedSection || !teAnalyzedList) return;
+
+  const items = state.extractedTextCache[pageIndex];
+  if (!items || items.length === 0) {
+    teAnalyzedSection.style.display = 'none';
+    return;
+  }
+
+  teAnalyzedSection.style.display = 'flex';
+  teAnalyzedList.innerHTML = '';
+
+  for (let i = 0; i < items.length; i++) {
+    const item = document.createElement('div');
+    item.className = 'te-analyzed-item';
+    item.dataset.analyzedIndex = i;
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'te-analyzed-text';
+    textSpan.textContent = items[i].text || '(empty)';
+
+    const btn = document.createElement('button');
+    btn.className = 'te-annotation-btn';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 3 21 7 7 21 3 21 3 17 17 3"/></svg>';
+    btn.title = 'Edit this text';
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      loadAnalyzedIntoForm(i, pageIndex);
+    };
+
+    item.appendChild(textSpan);
+    item.appendChild(btn);
+    teAnalyzedList.appendChild(item);
+  }
+}
+
+// --- Load analyzed text item into the annotation form ---
+function loadAnalyzedIntoForm(analyzedIndex, pageIndex) {
+  const items = state.extractedTextCache[pageIndex];
+  if (!items || !items[analyzedIndex]) return;
+
+  const item = items[analyzedIndex];
+  
+  // Check if this analyzed text has already been turned into an annotation
+  const existingAnn = state.textAnnotations.find(
+    a => a.pageIndex === pageIndex && 
+         a._source === 'analyzed' && 
+         a._analyzedIndex === analyzedIndex
+  );
+
+  if (existingAnn) {
+    // Edit existing annotation
+    loadAnnotationIntoForm(existingAnn.id);
+    return;
+  }
+
+  // Load values into form for creating a new annotation
+  teText.value = item.text;
+  teFontSize.value = Math.round(item.fontSize) || 16;
+  teX.value = Math.round(item.x);
+  teY.value = Math.round(item.y);
+  
+  // Mark as editing a new annotation from analyzed text
+  textEditorCanvas.dataset.editingId = '';
+  teText.focus();
+  
+  // Show hint only once per session
+  if (!window._analyzeHintShown) {
+    window._analyzeHintShown = true;
+    showToast('Edit the text and click "Add Text" to place it');
+  }
+}
+
+// --- Draw annotation and extracted text markers on the canvas wrapper ---
+function drawAnnotationMarkers(pageIndex) {
+  // Remove all existing markers
+  const existingMarkers = textEditorCanvasWrapper.querySelectorAll('.te-marker');
+  existingMarkers.forEach(m => m.remove());
+
+  // Draw user-added annotation markers (blue dots with labels)
+  const annotations = state.textAnnotations.filter(a => a.pageIndex === pageIndex);
+  for (const ann of annotations) {
+    createMarker(ann, 'user', pageIndex);
+  }
+
+  // Draw extracted text markers (green, semi-transparent highlights with text)
+  const extractedItems = state.extractedTextCache[pageIndex] || [];
+  for (let i = 0; i < extractedItems.length; i++) {
+    const item = extractedItems[i];
+    // Skip if this extracted item already has a user annotation
+    const hasAnnotation = annotations.some(
+      a => a._source === 'analyzed' && a._analyzedIndex === i
+    );
+    createExtractedMarker(item, i, hasAnnotation);
+  }
+}
+
+// --- Create a user annotation marker (blue dot with label) ---
+function createMarker(ann, type, pageIndex) {
+  const marker = document.createElement('div');
+  marker.className = `te-marker te-marker-user`;
+  marker.dataset.annotationId = ann.id;
+
+  const canvasX = ann.x * TEXT_EDITOR_SCALE;
+  const canvasY = textEditorCanvas.height - ann.y * TEXT_EDITOR_SCALE;
+
+  marker.style.left = `${canvasX}px`;
+  marker.style.top = `${canvasY}px`;
+
+  // Label showing the text
+  const label = document.createElement('span');
+  label.className = 'te-marker-label';
+  label.textContent = ann.text;
+
+  const colorDot = document.createElement('span');
+  colorDot.className = 'te-marker-dot';
+  colorDot.style.background = ann.color;
+
+  marker.appendChild(colorDot);
+  marker.appendChild(label);
+
+  // Click to edit
+  marker.addEventListener('click', (e) => {
+    e.stopPropagation();
+    loadAnnotationIntoForm(ann.id);
+  });
+
+  // Make draggable
+  makeMarkerDraggable(marker, ann, 'user', pageIndex);
+
+  textEditorCanvasWrapper.appendChild(marker);
+}
+
+// --- Create an extracted text marker (green highlight box) ---
+function createExtractedMarker(item, index, hasAnnotation) {
+  const marker = document.createElement('div');
+  marker.className = `te-marker te-marker-extracted${hasAnnotation ? ' te-marker-muted' : ''}`;
+  marker.dataset.extractedIndex = index;
+
+  const canvasX = item.x * TEXT_EDITOR_SCALE;
+  const canvasY = textEditorCanvas.height - item.y * TEXT_EDITOR_SCALE;
+  const canvasW = item.width * TEXT_EDITOR_SCALE;
+  const canvasH = (item.fontSize * 1.2) * TEXT_EDITOR_SCALE;
+
+  marker.style.left = `${canvasX}px`;
+  marker.style.top = `${canvasY - canvasH}px`;
+  marker.style.width = `${Math.max(canvasW, 20)}px`;
+  marker.style.height = `${canvasH}px`;
+
+  // Show the actual text
+  marker.textContent = item.text;
+  marker.title = `${item.text} (x:${Math.round(item.x)}, y:${Math.round(item.y)})`;
+
+  // Click to create annotation from this text
+  marker.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!hasAnnotation) {
+      loadAnalyzedIntoForm(index, parseInt(textEditorCanvas.dataset.pageIndex));
+    }
+  });
+
+  if (!hasAnnotation) {
+    marker.style.cursor = 'pointer';
+  }
+
+  textEditorCanvasWrapper.appendChild(marker);
+}
+
+// --- Make a marker draggable via mouse events ---
+function makeMarkerDraggable(marker, ann, type, pageIndex) {
+  let isDragging = false;
+  let startX, startY;
+  let origX, origY;
+
+  marker.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.te-marker-label, .te-marker-dot')) {
+      return;
+    }
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    origX = ann.x;
+    origY = ann.y;
+    marker.classList.add('te-marker-dragging');
+    // Clear editing state so Add Text creates fresh
+    textEditorCanvas.dataset.editingId = '';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+
+    const dx = (e.clientX - startX) / TEXT_EDITOR_SCALE;
+    const dy = (e.clientY - startY) / TEXT_EDITOR_SCALE;
+
+    // Update position in PDF coordinates (flip Y)
+    const newX = Math.max(0, origX + dx);
+    const newY = Math.max(0, origY - dy); // Flip Y because canvas Y is inverted
+
+    teX.value = Math.round(newX);
+    teY.value = Math.round(newY);
+
+    // Live-update marker position
+    const canvasX = newX * TEXT_EDITOR_SCALE;
+    const canvasY = textEditorCanvas.height - newY * TEXT_EDITOR_SCALE;
+    marker.style.left = `${canvasX}px`;
+    marker.style.top = `${canvasY}px`;
+  });
+
+  document.addEventListener('mouseup', (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    marker.classList.remove('te-marker-dragging');
+    
+    // Update the annotation with new position
+    const newX = parseFloat(teX.value);
+    const newY = parseFloat(teY.value);
+    if (!isNaN(newX) && !isNaN(newY) && (newX !== origX || newY !== origY)) {
+      ann.x = newX;
+      ann.y = newY;
+      // Save snapshot for undo
+      saveSnapshot();
+    }
+  });
+}
+
+// --- Handle click on text editor canvas (add new text) ---
 function handleTextEditorCanvasClick(e) {
   const rect = textEditorCanvas.getBoundingClientRect();
   const scaleX = textEditorCanvas.width / rect.width;
@@ -1292,6 +1570,7 @@ function resetState() {
   state.fileName = '';
   state.isProcessing = false;
   state.textAnnotations = [];
+  state.extractedTextCache = {};
   state.fileSize = '';
   state.history.past = [];
   state.history.future = [];
@@ -1342,7 +1621,7 @@ function updateUI() {
     if (fileInfoName) fileInfoName.textContent = state.fileName || 'document';
     if (fileInfoDetails) {
       const details = `${state.pageCount} page${state.pageCount !== 1 ? 's' : ''}`;
-      fileInfoDetails.textContent = state.fileSize ? `${details} — ${state.fileSize}` : details;
+      fileInfoDetails.textContent = state.fileSize ? `${details} \u2014 ${state.fileSize}` : details;
     }
   }
   updateToolbarButtons();
@@ -1368,7 +1647,8 @@ function updateToolbarButtons() {
   const btnOpacity = hasSelection ? '1' : '0.4';
   if (deleteBtn) deleteBtn.style.opacity = btnOpacity;
   if (rotateCWBtn) rotateCWBtn.style.opacity = btnOpacity;
-  if (rotateCCWBtn) rotateCCWBtn.style.opacity = btnOpacity;    if (textBtn) textBtn.style.opacity = state.pageCount > 0 ? '1' : '0.4';
+  if (rotateCCWBtn) rotateCCWBtn.style.opacity = btnOpacity;
+  if (textBtn) textBtn.style.opacity = state.pageCount > 0 ? '1' : '0.4';
 
   const exportImagesBtn = $('#exportImagesBtn');
   const extractTextBtn = $('#extractTextBtn');
@@ -1466,7 +1746,7 @@ function openExportImages() {
     return;
   }
 
-  exportImagesTitle.textContent = `Export PDF Pages as Images — ${state.fileName || 'document'}.pdf (${state.pageCount} pages)`;
+  exportImagesTitle.textContent = `Export PDF Pages as Images \u2014 ${state.fileName || 'document'}.pdf (${state.pageCount} pages)`;
   exportImagesModal.style.display = 'flex';
 }
 
