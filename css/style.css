@@ -1416,9 +1416,14 @@ body {
   .landing-tool-card {
     width: 100%;
     max-width: 100%;
+    padding: 0;
+  }
+
+  .landing-tool-card-inner {
     padding: 14px 16px;
     flex-direction: row;
     text-align: left;
+    gap: 10px;
   }
 
   .landing-tool-icon {

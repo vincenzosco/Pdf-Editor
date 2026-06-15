@@ -137,9 +137,10 @@ async function transitionToEditor() {
       mainContent.classList.remove('view-transitioning');
 
       // Force reflow then add entrance animations
-      await new Promise(r => setTimeout(r, 20));        [toolbar, fileInfoBar, pageGrid].forEach(el => {
-          if (el) el.classList.add('view-enter');
-        });
+      await new Promise(r => setTimeout(r, 20));
+      [toolbar, fileInfoBar, pageGrid].forEach(el => {
+        if (el) el.classList.add('view-enter');
+      });
       resolve();
     }, 300);
   });
