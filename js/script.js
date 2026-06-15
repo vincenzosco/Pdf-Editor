@@ -94,6 +94,168 @@ function init() {
   initGlobalDrop();
   initKeyboardShortcuts();
   initImageUploadDragDrop();
+  initCardDropZones();
+  triggerLandingEntrance();
+}
+
+// ============================================
+// Animated View Transitions
+// ============================================
+
+function triggerLandingEntrance() {
+  // Forces the entrance animations to re-trigger by briefly removing and re-adding
+  // The animations have delays baked into the CSS nth-child rules
+  const tools = document.getElementById('landingTools');
+  const zone = document.getElementById('dropZone');
+  if (tools) {
+    tools.style.animation = 'none';
+    tools.offsetHeight; // reflow
+    tools.style.animation = '';
+  }
+  if (zone) {
+    zone.style.animation = 'none';
+    zone.offsetHeight;
+    zone.style.animation = '';
+  }
+}
+
+async function transitionToEditor() {
+  return new Promise(resolve => {
+    const mainContent = $('#mainContent');
+    mainContent.classList.add('view-transitioning');
+    setTimeout(async () => {
+      // Show the editor view elements with entrance animations
+      const toolbar = document.getElementById('toolbar');
+      const fileInfoBar = document.getElementById('fileInfoBar');
+      const pageGrid = document.getElementById('pageGrid');
+
+      // Remove entrance classes first if they exist
+      [toolbar, fileInfoBar, pageGrid].forEach(el => {
+        if (el) el.classList.remove('view-enter');
+      });
+
+      mainContent.classList.remove('view-transitioning');
+
+      // Force reflow then add entrance animations
+      await new Promise(r => setTimeout(r, 20));        [toolbar, fileInfoBar, pageGrid].forEach(el => {
+          if (el) el.classList.add('view-enter');
+        });
+      resolve();
+    }, 300);
+  });
+}
+
+// ============================================
+// Card Drop Zones (landing page tool cards)
+// ============================================
+
+function initCardDropZones() {
+  const cards = document.querySelectorAll('.landing-tool-card');
+
+  cards.forEach(card => {
+    const acceptType = card.dataset.accept; // 'pdf' or 'image'
+
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      card.classList.add('card-drag-over');
+    });
+
+    card.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Only remove if we actually left the card (not entering a child)
+      if (!card.contains(e.relatedTarget)) {
+        card.classList.remove('card-drag-over');
+      }
+    });
+
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      card.classList.remove('card-drag-over');
+
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length === 0) return;
+
+      if (acceptType === 'image') {
+        // Images to PDF — accept image files
+        const imageFiles = files.filter(f => f.type.startsWith('image/'));
+        if (imageFiles.length > 0) {
+          handleToolClick('img2pdf', imageFiles);
+        } else {
+          showToast('Please drop image files (PNG, JPG, WebP)', 'error');
+        }
+      } else {
+        // PDF tools — accept PDF files
+        const pdfFiles = files.filter(f => f.type === 'application/pdf' || f.name.endsWith('.pdf'));
+        if (pdfFiles.length > 0) {
+          handleToolClick(card.dataset.tool, pdfFiles);
+        } else {
+          showToast('Please drop a PDF file', 'error');
+        }
+      }
+    });
+
+    // Also wire up the hidden file input inside the card for click-to-browse
+    const fileInput = card.querySelector('.card-file-input');
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+          if (acceptType === 'image') {
+            handleToolClick('img2pdf', files);
+          } else {
+            handleToolClick(card.dataset.tool, files);
+          }
+        }
+        e.target.value = '';
+      });
+    }
+  });
+}
+
+// ============================================
+// Tool Card Click Handler
+// ============================================
+
+function handleToolClick(tool, preloadedFiles) {
+  // If files were dropped/uploaded, use them directly
+  if (preloadedFiles && preloadedFiles.length > 0) {
+    if (tool === 'img2pdf') {
+      openImagesToPDF();
+      handleImageFiles(preloadedFiles);
+      return;
+    }
+    // PDF tools: load the first PDF
+    const pdfFile = preloadedFiles.find(f => f.type === 'application/pdf' || f.name.endsWith('.pdf'));
+    if (pdfFile) {
+      loadPDF(pdfFile).then(() => {
+        // After loading, open the specific tool if applicable
+        if (tool === 'text') openTextEditor();
+        else if (tool === 'export') openExportImages();
+        else if (tool === 'extract') openExtractText();
+        else if (tool === 'merge' && preloadedFiles.length > 1) {
+          // Merge additional PDFs
+          for (let i = 1; i < preloadedFiles.length; i++) {
+            if (preloadedFiles[i].type === 'application/pdf' || preloadedFiles[i].name.endsWith('.pdf')) {
+              mergePDF(preloadedFiles[i]);
+            }
+          }
+        }
+      });
+    }
+    return;
+  }
+
+  // No files provided — trigger file picker via the card's hidden input
+  const card = document.querySelector(`.landing-tool-card[data-tool="${tool}"]`);
+  if (card) {
+    const fileInput = card.querySelector('.card-file-input');
+    if (fileInput) {
+      fileInput.click();
+    }
+  }
 }
 
 function initDropZone() {
@@ -364,6 +526,8 @@ async function loadPDF(file) {
 
     await renderAllThumbnails();
     updateUI();
+    await transitionToEditor();
+
     showToast(`Loaded "${file.name}" (${state.pageCount} page${state.pageCount !== 1 ? 's' : ''})`);
   } catch (err) {
     console.error('Failed to load PDF:', err);
@@ -913,7 +1077,7 @@ function handleTextEditorCanvasClick(e) {
 }
 
 // --- Add text annotation ---
-function addTextAnnotation() {
+async function addTextAnnotation() {
   const pageIndex = parseInt(textEditorCanvas.dataset.pageIndex, 10);
   const text = teText.value.trim();
   const fontSize = parseInt(teFontSize.value, 10);
@@ -1131,16 +1295,29 @@ function resetState() {
   state.history.past = [];
   state.history.future = [];
 
-  dropZone.style.display = '';
-  landingTools.style.display = 'flex';
-  loadingState.style.display = 'none';
-  errorState.style.display = 'none';
-  pageGrid.style.display = 'none';
-  pageGrid.innerHTML = '';
-  toolbar.style.display = 'none';
-  fileInfoBar.style.display = 'none';
-  downloadBtn.style.display = 'none';
-  pageCount.style.display = 'none';
+  // Animated transition back to landing
+  const mainContent = $('#mainContent');
+  mainContent.classList.add('view-transitioning');
+
+  setTimeout(() => {
+    dropZone.style.display = '';
+    landingTools.style.display = 'flex';
+    loadingState.style.display = 'none';
+    errorState.style.display = 'none';
+    pageGrid.style.display = 'none';
+    pageGrid.innerHTML = '';
+    toolbar.style.display = 'none';
+    toolbar.classList.remove('view-enter');
+    fileInfoBar.style.display = 'none';
+    fileInfoBar.classList.remove('view-enter');
+    pageGrid.classList.remove('view-enter');
+    downloadBtn.style.display = 'none';
+    pageCount.style.display = 'none';
+
+    mainContent.classList.remove('view-transitioning');
+    triggerLandingEntrance();
+  }, 300);
+
   updateUndoRedoButtons();
   closeTextEditor();
 }

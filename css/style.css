@@ -232,7 +232,20 @@ body {
 }
 
 /* ============================================
-   Landing Tools (smallpdf-style tool cards)
+   Animated Page Transitions
+   ============================================ */
+
+.main-content {
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+
+.main-content.view-transitioning {
+  opacity: 0;
+  transform: translateY(12px) scale(0.98);
+}
+
+/* ============================================
+   Landing Tools (tool cards with drop zones)
    ============================================ */
 
 .landing-tools {
@@ -244,20 +257,66 @@ body {
   margin-top: 24px;
 }
 
+/* --- Staggered entrance animation --- */
+.landing-tool-card {
+  animation: cardEntrance 0.5s ease-out both;
+}
+
+.landing-tool-card:nth-child(1) { animation-delay: 0.00s; }
+.landing-tool-card:nth-child(2) { animation-delay: 0.06s; }
+.landing-tool-card:nth-child(3) { animation-delay: 0.12s; }
+.landing-tool-card:nth-child(4) { animation-delay: 0.18s; }
+.landing-tool-card:nth-child(5) { animation-delay: 0.24s; }
+.landing-tool-card:nth-child(6) { animation-delay: 0.30s; }
+
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* --- Drop zone entrance animation --- */
+.drop-zone {
+  animation: dropZoneEntrance 0.6s ease-out both 0.1s;
+}
+
+@keyframes dropZoneEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .landing-tool-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: 20px 24px;
-  width: calc(50% - 8px);
-  max-width: 320px;
   cursor: pointer;
   transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
+  width: calc(50% - 8px);
+  max-width: 320px;
+}
+
+.landing-tool-card-inner {
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 .landing-tool-card:hover {
@@ -266,11 +325,71 @@ body {
   transform: translateY(-2px);
 }
 
+/* --- Card drag-over state --- */
+.landing-tool-card.card-drag-over {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15), var(--shadow-md);
+}
+
+.landing-tool-card.card-drag-over .landing-tool-card-inner {
+  opacity: 0.15;
+}
+
+.card-drop-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.landing-tool-card.card-drag-over .card-drop-overlay {
+  opacity: 1;
+}
+
+.card-drop-overlay svg {
+  width: 32px;
+  height: 32px;
+  color: var(--color-primary);
+  animation: dropBounce 1s ease-in-out infinite;
+}
+
+@keyframes dropBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.card-drop-overlay span {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
 .landing-tool-icon {
   width: 40px;
   height: 40px;
   color: var(--color-primary);
   margin-bottom: 4px;
+  transition: transform 300ms ease;
+}
+
+.landing-tool-card:hover .landing-tool-icon {
+  transform: scale(1.1);
 }
 
 .landing-tool-icon svg {
@@ -719,6 +838,52 @@ body {
   flex-direction: column;
   gap: 8px;
   z-index: 300;
+}
+
+/* --- Editor view entrance animation --- */
+.toolbar.view-enter {
+  animation: toolbarSlideDown 0.35s ease-out both;
+}
+
+@keyframes toolbarSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.file-info-bar.view-enter {
+  animation: infoSlideDown 0.35s ease-out both 0.05s;
+}
+
+@keyframes infoSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-grid.view-enter {
+  animation: gridFadeIn 0.4s ease-out both 0.1s;
+}
+
+@keyframes gridFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .toast {

@@ -117,7 +117,7 @@
   </div>
 
   <!-- Main Content -->
-  <main class="main-content">
+  <main class="main-content" id="mainContent">
     <!-- Drop Zone -->
     <div class="drop-zone" id="dropZone">
       <div class="drop-zone-content">
@@ -129,49 +129,91 @@
       </div>
     </div>
 
-    <!-- Landing Tools (smallpdf-style tool cards) -->
+    <!-- Landing Tools (inspiration from smallpdf) -->
     <div class="landing-tools" id="landingTools">
-      <div class="landing-tool-card" onclick="document.getElementById('dropInput').click()">
-        <div class="landing-tool-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+      <div class="landing-tool-card" data-accept="pdf" data-tool="edit" onclick="handleToolClick('edit')">
+        <input type="file" accept=".pdf" style="display:none;" class="card-file-input" />
+        <div class="landing-tool-card-inner">
+          <div class="landing-tool-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          </div>
+          <span class="landing-tool-name">Edit PDF</span>
+          <span class="landing-tool-desc">Rotate, reorder, delete pages</span>
         </div>
-        <span class="landing-tool-name">Edit PDF</span>
-        <span class="landing-tool-desc">Rotate, reorder, delete pages</span>
+        <div class="card-drop-overlay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span>Drop PDF here</span>
+        </div>
       </div>
-      <div class="landing-tool-card" onclick="document.getElementById('dropInput').click()">
-        <div class="landing-tool-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18"></path><path d="M8 7l4-4 4 4"></path><path d="M8 17l4 4 4-4"></path></svg>
+      <div class="landing-tool-card" data-accept="pdf" data-tool="merge" onclick="handleToolClick('merge')">
+        <input type="file" accept=".pdf" style="display:none;" class="card-file-input" />
+        <div class="landing-tool-card-inner">
+          <div class="landing-tool-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18"></path><path d="M8 7l4-4 4 4"></path><path d="M8 17l4 4 4-4"></path></svg>
+          </div>
+          <span class="landing-tool-name">Merge PDFs</span>
+          <span class="landing-tool-desc">Combine multiple files into one</span>
         </div>
-        <span class="landing-tool-name">Merge PDFs</span>
-        <span class="landing-tool-desc">Combine multiple files into one</span>
+        <div class="card-drop-overlay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span>Drop PDF here</span>
+        </div>
       </div>
-      <div class="landing-tool-card" onclick="document.getElementById('dropInput').click()">
-        <div class="landing-tool-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="17 3 21 7 7 21 3 21 3 17 17 3"></polyline></svg>
+      <div class="landing-tool-card" data-accept="pdf" data-tool="text" onclick="handleToolClick('text')">
+        <input type="file" accept=".pdf" style="display:none;" class="card-file-input" />
+        <div class="landing-tool-card-inner">
+          <div class="landing-tool-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="17 3 21 7 7 21 3 21 3 17 17 3"></polyline></svg>
+          </div>
+          <span class="landing-tool-name">Add Text</span>
+          <span class="landing-tool-desc">Place text annotations on pages</span>
         </div>
-        <span class="landing-tool-name">Add Text</span>
-        <span class="landing-tool-desc">Place text annotations on pages</span>
+        <div class="card-drop-overlay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span>Drop PDF here</span>
+        </div>
       </div>
-      <div class="landing-tool-card" onclick="document.getElementById('dropInput').click()">
-        <div class="landing-tool-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+      <div class="landing-tool-card" data-accept="pdf" data-tool="export" onclick="handleToolClick('export')">
+        <input type="file" accept=".pdf" style="display:none;" class="card-file-input" />
+        <div class="landing-tool-card-inner">
+          <div class="landing-tool-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+          </div>
+          <span class="landing-tool-name">Export Images</span>
+          <span class="landing-tool-desc">Convert pages to PNG/JPEG</span>
         </div>
-        <span class="landing-tool-name">Export Images</span>
-        <span class="landing-tool-desc">Convert pages to PNG/JPEG</span>
+        <div class="card-drop-overlay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span>Drop PDF here</span>
+        </div>
       </div>
-      <div class="landing-tool-card" onclick="openImagesToPDF()">
-        <div class="landing-tool-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline></svg>
+      <div class="landing-tool-card" data-accept="image" data-tool="img2pdf" onclick="handleToolClick('img2pdf')">
+        <input type="file" accept="image/*" multiple style="display:none;" class="card-file-input" />
+        <div class="landing-tool-card-inner">
+          <div class="landing-tool-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline></svg>
+          </div>
+          <span class="landing-tool-name">Images to PDF</span>
+          <span class="landing-tool-desc">Create a PDF from your photos</span>
         </div>
-        <span class="landing-tool-name">Images to PDF</span>
-        <span class="landing-tool-desc">Create a PDF from your photos</span>
+        <div class="card-drop-overlay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span>Drop images here</span>
+        </div>
       </div>
-      <div class="landing-tool-card" onclick="document.getElementById('dropInput').click()">
-        <div class="landing-tool-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
+      <div class="landing-tool-card" data-accept="pdf" data-tool="extract" onclick="handleToolClick('extract')">
+        <input type="file" accept=".pdf" style="display:none;" class="card-file-input" />
+        <div class="landing-tool-card-inner">
+          <div class="landing-tool-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
+          </div>
+          <span class="landing-tool-name">Extract Text</span>
+          <span class="landing-tool-desc">Copy text from any PDF</span>
         </div>
-        <span class="landing-tool-name">Extract Text</span>
-        <span class="landing-tool-desc">Copy text from any PDF</span>
+        <div class="card-drop-overlay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span>Drop PDF here</span>
+        </div>
       </div>
     </div>
 
