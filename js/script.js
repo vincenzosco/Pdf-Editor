@@ -18,8 +18,13 @@ const state = {
   pageCount: 0,              // Number of pages
   selectedPages: new Set(),  // Set of selected page indices
   fileName: '',
+  fileSize: '',
   isProcessing: false,
   textAnnotations: [],       // Array of { id, pageIndex, text, x, y, fontSize, color }
+  history: {
+    past: [],      // past snapshots
+    future: [],    // future snapshots for redo
+  },
 };
 
 // --- DOM References ---
@@ -34,6 +39,12 @@ const errorState = $('#errorState');
 const errorMessage = $('#errorMessage');
 const pageGrid = $('#pageGrid');
 const toolbar = $('#toolbar');
+const fileInfoBar = $('#fileInfoBar');
+const fileInfoName = $('#fileInfoName');
+const fileInfoDetails = $('#fileInfoDetails');
+const landingTools = $('#landingTools');
+const btnUndo = $('#btnUndo');
+const btnRedo = $('#btnRedo');
 const downloadBtn = $('#downloadBtn');
 const pageCount = $('#pageCount');
 const previewModal = $('#previewModal');
@@ -167,6 +178,19 @@ function initKeyboardShortcuts() {
       e.preventDefault();
       deletePages();
     }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+      if (e.shiftKey) {
+        e.preventDefault();
+        redo();
+      } else if (state.history.past.length > 0) {
+        e.preventDefault();
+        undo();
+      }
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
+      e.preventDefault();
+      redo();
+    }
     if ((e.metaKey || e.ctrlKey) && e.key === 'a' &&
         state.pdfDoc && !e.target.closest('input, textarea, .text-editor-controls')) {
       e.preventDefault();
@@ -211,6 +235,104 @@ function handleMergeUpload(event) {
 }
 
 // ============================================
+// Undo / Redo System
+// ============================================
+
+const MAX_HISTORY = 20;
+
+async function saveSnapshot() {
+  if (!state.pdfDoc) return;
+  try {
+    const bytes = await state.pdfDoc.save();
+    state.history.past.push({
+      pdfBytes: bytes.slice(0),
+      textAnnotations: JSON.parse(JSON.stringify(state.textAnnotations)),
+      selectedPages: Array.from(state.selectedPages),
+      pageCount: state.pageCount,
+      fileName: state.fileName,
+      fileSize: state.fileSize,
+    });
+    // Limit history size
+    if (state.history.past.length > MAX_HISTORY) {
+      state.history.past.shift();
+    }
+    // Clear future when new action is taken
+    state.history.future = [];
+    updateUndoRedoButtons();
+  } catch (e) {
+    console.error('Failed to save snapshot:', e);
+  }
+}
+
+async function undo() {
+  if (state.history.past.length === 0 || state.isProcessing) return;
+
+  // Save current state to future
+  const currentBytes = await state.pdfDoc.save();
+  state.history.future.push({
+    pdfBytes: currentBytes.slice(0),
+    textAnnotations: JSON.parse(JSON.stringify(state.textAnnotations)),
+    selectedPages: Array.from(state.selectedPages),
+    pageCount: state.pageCount,
+    fileName: state.fileName,
+    fileSize: state.fileSize,
+  });
+
+  // Restore previous state
+  const snapshot = state.history.past.pop();
+  await restoreSnapshot(snapshot);
+  updateUndoRedoButtons();
+  showToast('Undo');
+}
+
+async function redo() {
+  if (state.history.future.length === 0 || state.isProcessing) return;
+
+  // Save current state to past
+  const currentBytes = await state.pdfDoc.save();
+  state.history.past.push({
+    pdfBytes: currentBytes.slice(0),
+    textAnnotations: JSON.parse(JSON.stringify(state.textAnnotations)),
+    selectedPages: Array.from(state.selectedPages),
+    pageCount: state.pageCount,
+    fileName: state.fileName,
+    fileSize: state.fileSize,
+  });
+
+  // Restore next state
+  const snapshot = state.history.future.pop();
+  await restoreSnapshot(snapshot);
+  updateUndoRedoButtons();
+  showToast('Redo');
+}
+
+async function restoreSnapshot(snapshot) {
+  state.isProcessing = true;
+  try {
+    state.pdfDoc = await PDFDocument.load(snapshot.pdfBytes.slice(0));
+    state.textAnnotations = snapshot.textAnnotations;
+    state.selectedPages = new Set(snapshot.selectedPages);
+    state.pageCount = snapshot.pageCount;
+    state.fileName = snapshot.fileName;
+    state.fileSize = snapshot.fileSize || '';
+
+    await initPDFjs(snapshot.pdfBytes.slice(0));
+    await renderAllThumbnails();
+    updateUI();
+  } catch (e) {
+    console.error('Failed to restore snapshot:', e);
+    showToast('Failed to undo/redo', 'error');
+  } finally {
+    state.isProcessing = false;
+  }
+}
+
+function updateUndoRedoButtons() {
+  if (btnUndo) btnUndo.disabled = state.history.past.length === 0;
+  if (btnRedo) btnRedo.disabled = state.history.future.length === 0;
+}
+
+// ============================================
 // PDF Loading
 // ============================================
 async function loadPDF(file) {
@@ -223,7 +345,10 @@ async function loadPDF(file) {
     const data = new Uint8Array(arrayBuffer);
 
     state.fileName = file.name.replace(/\.pdf$/i, '');
+    state.fileSize = formatFileSize(file.size);
     state.textAnnotations = [];
+    state.history.past = [];
+    state.history.future = [];
 
     state.pdfDoc = await PDFDocument.load(data);
     state.pageCount = state.pdfDoc.getPageCount();
@@ -231,6 +356,11 @@ async function loadPDF(file) {
     await initPDFjs(data);
 
     state.selectedPages.clear();
+
+    // Save initial snapshot
+    await saveSnapshot();
+    // Remove the initial snapshot from past (it's the starting point, not an undoable action)
+    // Actually keep it so undo can go back to original state
 
     await renderAllThumbnails();
     updateUI();
@@ -465,6 +595,8 @@ async function rotatePages(angle) {
     return;
   }
 
+  await saveSnapshot();
+
   for (const pageIndex of state.selectedPages) {
     const pdfPage = state.pdfDoc.getPage(pageIndex);
     const currentRotation = pdfPage.getRotation().angle;
@@ -488,6 +620,13 @@ async function deletePages() {
   }
 
   const count = state.selectedPages.size;
+
+  // Show confirmation for delete
+  const confirmed = await confirmDelete(count);
+  if (!confirmed) return;
+
+  await saveSnapshot();
+
   const indicesToRemove = Array.from(state.selectedPages).sort((a, b) => b - a);
 
   for (const pageIndex of indicesToRemove) {
@@ -529,6 +668,8 @@ async function reorderPages(fromIndex, toIndex) {
   const pageIndices = Array.from({ length: state.pageCount }, (_, i) => i);
   const [moved] = pageIndices.splice(fromIndex, 1);
   pageIndices.splice(toIndex, 0, moved);
+
+  await saveSnapshot();
 
   // Build new document with pages in new order
   const newDoc = await PDFDocument.create();
@@ -588,7 +729,7 @@ async function mergePDF(file) {
     const mergeDoc = await PDFDocument.load(new Uint8Array(arrayBuffer));
     const mergePageCount = mergeDoc.getPageCount();
 
-    const oldPageCount = state.pageCount;
+    await saveSnapshot();
 
     const copiedPages = await state.pdfDoc.copyPages(mergeDoc, mergeDoc.getPageIndices());
     for (const page of copiedPages) {
@@ -791,6 +932,8 @@ function addTextAnnotation() {
     return;
   }
 
+  await saveSnapshot();
+
   if (editingId) {
     // Update existing annotation
     const ann = state.textAnnotations.find(a => a.id === editingId);
@@ -847,7 +990,9 @@ function loadAnnotationIntoForm(id) {
 }
 
 // --- Delete text annotation ---
-function deleteTextAnnotation(id) {
+async function deleteTextAnnotation(id) {
+  await saveSnapshot();
+
   state.textAnnotations = state.textAnnotations.filter(a => a.id !== id);
 
   const pageIndex = parseInt(textEditorCanvas.dataset.pageIndex, 10);
@@ -982,15 +1127,21 @@ function resetState() {
   state.fileName = '';
   state.isProcessing = false;
   state.textAnnotations = [];
+  state.fileSize = '';
+  state.history.past = [];
+  state.history.future = [];
 
   dropZone.style.display = '';
+  landingTools.style.display = 'flex';
   loadingState.style.display = 'none';
   errorState.style.display = 'none';
   pageGrid.style.display = 'none';
   pageGrid.innerHTML = '';
   toolbar.style.display = 'none';
+  fileInfoBar.style.display = 'none';
   downloadBtn.style.display = 'none';
   pageCount.style.display = 'none';
+  updateUndoRedoButtons();
   closeTextEditor();
 }
 
@@ -1000,14 +1151,24 @@ function resetState() {
 function updateUI() {
   if (state.pageCount > 0) {
     dropZone.style.display = 'none';
+    landingTools.style.display = 'none';
     toolbar.style.display = 'flex';
+    fileInfoBar.style.display = 'flex';
     downloadBtn.style.display = 'inline-flex';
     pageCount.style.display = 'inline';
     pageCount.textContent = `${state.pageCount} page${state.pageCount !== 1 ? 's' : ''}`;
     pageGrid.style.display = 'grid';
     errorState.style.display = 'none';
+
+    // Update file info bar
+    if (fileInfoName) fileInfoName.textContent = state.fileName || 'document';
+    if (fileInfoDetails) {
+      const details = `${state.pageCount} page${state.pageCount !== 1 ? 's' : ''}`;
+      fileInfoDetails.textContent = state.fileSize ? `${details} — ${state.fileSize}` : details;
+    }
   }
   updateToolbarButtons();
+  updateUndoRedoButtons();
 }
 
 function updateToolbarButtons() {
@@ -1035,6 +1196,70 @@ function updateToolbarButtons() {
   const extractTextBtn = $('#extractTextBtn');
   if (exportImagesBtn) exportImagesBtn.style.opacity = state.pageCount > 0 ? '1' : '0.4';
   if (extractTextBtn) extractTextBtn.style.opacity = state.pageCount > 0 ? '1' : '0.4';
+}
+
+// ============================================
+// Helpers
+// ============================================
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+async function confirmDelete(count) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.display = 'flex';
+    overlay.style.zIndex = '400';
+
+    overlay.innerHTML = `
+      <div class="modal-content" style="max-width:400px;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <span class="modal-title">Delete ${count} page${count !== 1 ? 's' : ''}?</span>
+          <button class="modal-close" id="confirmClose">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body" style="flex-direction:column;gap:16px;text-align:center;padding:24px;">
+          <p style="color:var(--color-text-secondary);font-size:0.9rem;">
+            This action cannot be undone. Are you sure you want to delete ${count} page${count !== 1 ? 's' : ''}?
+          </p>
+          <div style="display:flex;gap:8px;justify-content:center;">
+            <button class="btn" id="confirmCancel">Cancel</button>
+            <button class="btn btn-danger" id="confirmOk" style="background:var(--color-danger);color:white;border-color:var(--color-danger);">Delete</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const close = () => {
+      overlay.remove();
+      resolve(false);
+    };
+    const confirm = () => {
+      overlay.remove();
+      resolve(true);
+    };
+
+    overlay.querySelector('#confirmClose').onclick = close;
+    overlay.querySelector('#confirmCancel').onclick = close;
+    overlay.querySelector('#confirmOk').onclick = confirm;
+    overlay.onclick = close;
+
+    // Keyboard handler
+    const keyHandler = (e) => {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', keyHandler); }
+      if (e.key === 'Enter') { confirm(); document.removeEventListener('keydown', keyHandler); }
+    };
+    document.addEventListener('keydown', keyHandler);
+  });
 }
 
 function showLoading(show) {

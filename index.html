@@ -5,11 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PDF Editor</title>
   <link rel="stylesheet" href="css/style.css" />
-  <!-- PDF.js for rendering -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <!-- pdf-lib for PDF editing -->
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <!-- JSZip for batch downloads -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
@@ -28,105 +25,92 @@
     </div>
     <div class="header-right">
       <button class="btn btn-primary" id="downloadBtn" style="display:none;" onclick="downloadPDF()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         Download PDF
       </button>
     </div>
   </header>
+
+  <!-- File Info Bar -->
+  <div class="file-info-bar" id="fileInfoBar" style="display:none;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0;color:var(--color-primary);">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+      <polyline points="14 2 14 8 20 8"></polyline>
+    </svg>
+    <span class="file-info-name" id="fileInfoName">document</span>
+    <span class="file-info-dot">.</span>
+    <span class="file-info-details" id="fileInfoDetails"></span>
+    <button class="file-info-close" onclick="resetState()" title="Close document">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+  </div>
 
   <!-- Toolbar -->
   <div class="toolbar" id="toolbar" style="display:none;">
     <div class="toolbar-group">
       <label class="toolbar-btn" title="Upload PDF" onclick="document.getElementById('fileInput').click()">
         <input type="file" id="fileInput" accept=".pdf" style="display:none;" onchange="handleFileUpload(event)" />
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="17 8 12 3 7 8"></polyline>
-          <line x1="12" y1="3" x2="12" y2="15"></line>
-        </svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         <span>Open</span>
       </label>
       <label class="toolbar-btn" title="Merge PDF" onclick="document.getElementById('mergeInput').click()">
         <input type="file" id="mergeInput" accept=".pdf" style="display:none;" onchange="handleMergeUpload(event)" />
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3v18"></path>
-          <path d="M8 7l4-4 4 4"></path>
-          <path d="M8 17l4 4 4-4"></path>
-        </svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"></path><path d="M8 7l4-4 4 4"></path><path d="M8 17l4 4 4-4"></path></svg>
         <span>Merge</span>
       </label>
     </div>
     <div class="toolbar-divider"></div>
     <div class="toolbar-group">
+      <button class="toolbar-btn" id="btnUndo" title="Undo (Ctrl+Z)" onclick="undo()" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+        <span>Undo</span>
+      </button>
+      <button class="toolbar-btn" id="btnRedo" title="Redo (Ctrl+Shift+Z)" onclick="redo()" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+        <span>Redo</span>
+      </button>
+    </div>
+    <div class="toolbar-divider"></div>
+    <div class="toolbar-group">
       <button class="toolbar-btn" id="rotateCWBtn" title="Rotate Clockwise" onclick="rotatePages(90)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="23 4 23 10 17 10"></polyline>
-          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-        </svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
         <span>Rotate CW</span>
       </button>
       <button class="toolbar-btn" id="rotateCCWBtn" title="Rotate Counter-Clockwise" onclick="rotatePages(-90)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="1 4 1 10 7 10"></polyline>
-          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
-        </svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
         <span>Rotate CCW</span>
       </button>
     </div>
     <div class="toolbar-divider"></div>
     <div class="toolbar-group">
       <button class="toolbar-btn" id="textBtn" title="Add / Edit Text" onclick="openTextEditor()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="17 3 21 7 7 21 3 21 3 17 17 3"></polyline>
-        </svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 3 21 7 7 21 3 21 3 17 17 3"></polyline></svg>
         <span>Text</span>
       </button>
     </div>
     <div class="toolbar-divider"></div>
     <div class="toolbar-group">
-      <button class="toolbar-btn" id="exportImagesBtn" title="Export PDF pages as images" onclick="openExportImages()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-          <circle cx="8.5" cy="8.5" r="1.5"></circle>
-          <polyline points="21 15 16 10 5 21"></polyline>
-        </svg>
-        <span>Export Images</span>
+      <button class="toolbar-btn" id="exportImagesBtn" title="Export pages as images" onclick="openExportImages()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+        <span>Export</span>
       </button>
-      <button class="toolbar-btn" id="imagesToPDFBtn" title="Convert images to PDF" onclick="openImagesToPDF()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-          <circle cx="8.5" cy="8.5" r="1.5"></circle>
-          <polyline points="21 15 16 10 5 21"></polyline>
-        </svg>
-        <span>Images to PDF</span>
+      <button class="toolbar-btn" id="imagesToPDFBtn" title="Images to PDF" onclick="openImagesToPDF()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+        <span>Img2PDF</span>
       </button>
-      <button class="toolbar-btn" id="extractTextBtn" title="Extract text from PDF" onclick="openExtractText()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="4 7 4 4 20 4 20 7"></polyline>
-          <line x1="9" y1="20" x2="15" y2="20"></line>
-          <line x1="12" y1="4" x2="12" y2="20"></line>
-        </svg>
-        <span>Extract Text</span>
+      <button class="toolbar-btn" id="extractTextBtn" title="Extract Text" onclick="openExtractText()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
+        <span>Extract</span>
       </button>
     </div>
     <div class="toolbar-divider"></div>
     <div class="toolbar-group">
       <button class="toolbar-btn" id="selectAllBtn" title="Select All" onclick="selectAllPages()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="9" y1="12" x2="15" y2="12"></line>
-        </svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="12" x2="15" y2="12"></line></svg>
         <span>Select All</span>
       </button>
       <button class="toolbar-btn toolbar-btn-danger" id="deleteBtn" title="Delete Selected" onclick="deletePages()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="3 6 5 6 21 6"></polyline>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-        </svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
         <span>Delete</span>
       </button>
     </div>
@@ -134,22 +118,60 @@
 
   <!-- Main Content -->
   <main class="main-content">
-    <!-- Drop Zone (empty state) -->
+    <!-- Drop Zone -->
     <div class="drop-zone" id="dropZone">
       <div class="drop-zone-content">
-        <svg class="drop-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="12" y1="18" x2="12" y2="12"></line>
-          <line x1="9" y1="15" x2="12" y2="12"></line>
-          <line x1="15" y1="15" x2="12" y2="12"></line>
-        </svg>
+        <svg class="drop-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="12" y2="12"></line><line x1="15" y1="15" x2="12" y2="12"></line></svg>
         <h2 class="drop-zone-title">Drop your PDF here</h2>
         <p class="drop-zone-subtitle">or click to browse files</p>
         <input type="file" id="dropInput" accept=".pdf" style="display:none;" onchange="handleFileUpload(event)" />
-        <button class="btn btn-primary btn-lg" onclick="document.getElementById('dropInput').click()">
-          Choose PDF
-        </button>
+        <button class="btn btn-primary btn-lg" onclick="document.getElementById('dropInput').click()">Choose PDF</button>
+      </div>
+    </div>
+
+    <!-- Landing Tools (smallpdf-style tool cards) -->
+    <div class="landing-tools" id="landingTools">
+      <div class="landing-tool-card" onclick="document.getElementById('dropInput').click()">
+        <div class="landing-tool-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        </div>
+        <span class="landing-tool-name">Edit PDF</span>
+        <span class="landing-tool-desc">Rotate, reorder, delete pages</span>
+      </div>
+      <div class="landing-tool-card" onclick="document.getElementById('dropInput').click()">
+        <div class="landing-tool-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18"></path><path d="M8 7l4-4 4 4"></path><path d="M8 17l4 4 4-4"></path></svg>
+        </div>
+        <span class="landing-tool-name">Merge PDFs</span>
+        <span class="landing-tool-desc">Combine multiple files into one</span>
+      </div>
+      <div class="landing-tool-card" onclick="document.getElementById('dropInput').click()">
+        <div class="landing-tool-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="17 3 21 7 7 21 3 21 3 17 17 3"></polyline></svg>
+        </div>
+        <span class="landing-tool-name">Add Text</span>
+        <span class="landing-tool-desc">Place text annotations on pages</span>
+      </div>
+      <div class="landing-tool-card" onclick="document.getElementById('dropInput').click()">
+        <div class="landing-tool-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+        </div>
+        <span class="landing-tool-name">Export Images</span>
+        <span class="landing-tool-desc">Convert pages to PNG/JPEG</span>
+      </div>
+      <div class="landing-tool-card" onclick="openImagesToPDF()">
+        <div class="landing-tool-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline></svg>
+        </div>
+        <span class="landing-tool-name">Images to PDF</span>
+        <span class="landing-tool-desc">Create a PDF from your photos</span>
+      </div>
+      <div class="landing-tool-card" onclick="document.getElementById('dropInput').click()">
+        <div class="landing-tool-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
+        </div>
+        <span class="landing-tool-name">Extract Text</span>
+        <span class="landing-tool-desc">Copy text from any PDF</span>
       </div>
     </div>
 
@@ -161,11 +183,7 @@
 
     <!-- Error State -->
     <div class="error-state" id="errorState" style="display:none;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="15" y1="9" x2="9" y2="15"></line>
-        <line x1="9" y1="9" x2="15" y2="15"></line>
-      </svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
       <h3>Something went wrong</h3>
       <p id="errorMessage">Could not process the PDF file.</p>
       <button class="btn btn-primary" onclick="resetState()">Try Again</button>
@@ -175,17 +193,12 @@
     <div class="page-grid" id="pageGrid" style="display:none;"></div>
   </main>
 
-  <!-- Page Preview Modal -->
+  <!-- Preview Modal -->
   <div class="modal-overlay" id="previewModal" style="display:none;" onclick="closePreview()">
     <div class="modal-content" onclick="event.stopPropagation()">
       <div class="modal-header">
         <span class="modal-title" id="previewTitle">Page Preview</span>
-        <button class="modal-close" onclick="closePreview()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+        <button class="modal-close" onclick="closePreview()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
       </div>
       <div class="modal-body" id="previewBody"></div>
     </div>
@@ -196,12 +209,7 @@
     <div class="modal-content text-editor-content" onclick="event.stopPropagation()">
       <div class="modal-header">
         <span class="modal-title" id="textEditorTitle">Add Text</span>
-        <button class="modal-close" onclick="closeTextEditor()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+        <button class="modal-close" onclick="closeTextEditor()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
       </div>
       <div class="modal-body text-editor-body">
         <div class="text-editor-layout">
@@ -214,35 +222,17 @@
           <div class="text-editor-controls">
             <div class="te-section">
               <h3 class="te-section-title">New Text</h3>
-              <div class="te-field">
-                <label for="teText">Text</label>
-                <textarea id="teText" rows="2" placeholder="Enter text..."></textarea>
+              <div class="te-field"><label for="teText">Text</label><textarea id="teText" rows="2" placeholder="Enter text..."></textarea></div>
+              <div class="te-field-row">
+                <div class="te-field te-field-sm"><label for="teFontSize">Size</label><input type="number" id="teFontSize" value="16" min="4" max="200" /></div>
+                <div class="te-field te-field-sm"><label for="teColor">Color</label><input type="color" id="teColor" value="#000000" /></div>
               </div>
               <div class="te-field-row">
-                <div class="te-field te-field-sm">
-                  <label for="teFontSize">Size</label>
-                  <input type="number" id="teFontSize" value="16" min="4" max="200" />
-                </div>
-                <div class="te-field te-field-sm">
-                  <label for="teColor">Color</label>
-                  <input type="color" id="teColor" value="#000000" />
-                </div>
-              </div>
-              <div class="te-field-row">
-                <div class="te-field te-field-sm">
-                  <label for="teX">X (pt)</label>
-                  <input type="number" id="teX" value="50" min="0" />
-                </div>
-                <div class="te-field te-field-sm">
-                  <label for="teY">Y (pt)</label>
-                  <input type="number" id="teY" value="50" min="0" />
-                </div>
+                <div class="te-field te-field-sm"><label for="teX">X (pt)</label><input type="number" id="teX" value="50" min="0" /></div>
+                <div class="te-field te-field-sm"><label for="teY">Y (pt)</label><input type="number" id="teY" value="50" min="0" /></div>
               </div>
               <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="addTextAnnotation()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 Add Text
               </button>
             </div>
@@ -261,43 +251,19 @@
     <div class="modal-content conv-modal" onclick="event.stopPropagation()">
       <div class="modal-header">
         <span class="modal-title" id="exportImagesTitle">Export PDF Pages as Images</span>
-        <button class="modal-close" onclick="closeExportImages()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+        <button class="modal-close" onclick="closeExportImages()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
       </div>
       <div class="modal-body conv-body">
         <div class="conv-section">
           <div class="conv-field-row">
-            <div class="conv-field">
-              <label>Format</label>
-              <select id="eiFormat" class="conv-select">
-                <option value="png">PNG</option>
-                <option value="jpeg">JPEG</option>
-              </select>
-            </div>
-            <div class="conv-field">
-              <label>Scale</label>
-              <select id="eiScale" class="conv-select">
-                <option value="1">1x (Standard)</option>
-                <option value="2" selected>2x (High)</option>
-                <option value="3">3x (Ultra HD)</option>
-              </select>
-            </div>
+            <div class="conv-field"><label>Format</label><select id="eiFormat" class="conv-select"><option value="png">PNG</option><option value="jpeg">JPEG</option></select></div>
+            <div class="conv-field"><label>Scale</label><select id="eiScale" class="conv-select"><option value="1">1x (Standard)</option><option value="2" selected>2x (High)</option><option value="3">3x (Ultra HD)</option></select></div>
           </div>
-          <div class="conv-info">All pages will be exported as individual images.</div>
-          <div class="conv-actions">
-            <button class="btn btn-primary" onclick="exportAllAsImages()" style="justify-content:center;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              Export All Pages as ZIP
-            </button>
-          </div>
+          <div class="conv-info">All pages will be exported as individual images and bundled in a ZIP file.</div>
+          <button class="btn btn-primary" onclick="exportAllAsImages()" style="justify-content:center;width:100%;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export All Pages as ZIP
+          </button>
         </div>
       </div>
     </div>
@@ -308,52 +274,24 @@
     <div class="modal-content conv-modal" onclick="event.stopPropagation()">
       <div class="modal-header">
         <span class="modal-title">Convert Images to PDF</span>
-        <button class="modal-close" onclick="closeImagesToPDF()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+        <button class="modal-close" onclick="closeImagesToPDF()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
       </div>
       <div class="modal-body conv-body">
         <div class="conv-section">
           <label class="conv-upload-area" id="ipUploadArea">
             <input type="file" id="ipFileInput" accept="image/*" multiple style="display:none;" onchange="handleImageUpload(event)" />
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            <span>Click to upload images (PNG, JPG, WebP)</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <span>Drop images or click to upload (PNG, JPG, WebP)</span>
           </label>
           <div class="conv-field-row">
-            <div class="conv-field">
-              <label>Page Size</label>
-              <select id="ipPageSize" class="conv-select">
-                <option value="auto">Auto (match image)</option>
-                <option value="A4">A4</option>
-                <option value="Letter">Letter</option>
-              </select>
-            </div>
-            <div class="conv-field">
-              <label>Orientation</label>
-              <select id="ipOrientation" class="conv-select">
-                <option value="auto">Auto</option>
-                <option value="portrait">Portrait</option>
-                <option value="landscape">Landscape</option>
-              </select>
-            </div>
+            <div class="conv-field"><label>Page Size</label><select id="ipPageSize" class="conv-select"><option value="auto">Auto (match image)</option><option value="A4">A4</option><option value="Letter">Letter</option></select></div>
+            <div class="conv-field"><label>Orientation</label><select id="ipOrientation" class="conv-select"><option value="auto">Auto</option><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></div>
           </div>
           <div class="ip-grid" id="ipGrid"></div>
-          <div class="conv-actions">
-            <button class="btn btn-primary" onclick="convertImagesToPDF()" id="ipConvertBtn" disabled style="justify-content:center;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-              </svg>
-              Create PDF
-            </button>
-          </div>
+          <button class="btn btn-primary" onclick="convertImagesToPDF()" id="ipConvertBtn" disabled style="justify-content:center;width:100%;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            Create PDF
+          </button>
         </div>
       </div>
     </div>
@@ -364,29 +302,17 @@
     <div class="modal-content conv-modal" onclick="event.stopPropagation()">
       <div class="modal-header">
         <span class="modal-title">Extract Text from PDF</span>
-        <button class="modal-close" onclick="closeExtractText()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+        <button class="modal-close" onclick="closeExtractText()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
       </div>
       <div class="modal-body conv-body">
         <div class="conv-section">
           <div class="conv-extract-toolbar">
             <button class="btn" onclick="copyExtractedText()" style="gap:6px;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
               Copy
             </button>
             <button class="btn" onclick="downloadExtractedText()" style="gap:6px;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
               Download .txt
             </button>
           </div>
@@ -396,7 +322,7 @@
     </div>
   </div>
 
-  <!-- Toast Notification -->
+  <!-- Toast -->
   <div class="toast-container" id="toastContainer"></div>
 
   <script src="js/script.js"></script>
