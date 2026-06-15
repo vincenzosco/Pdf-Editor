@@ -899,6 +899,195 @@ body {
   text-shadow: 0 0 2px rgba(255,255,255,0.8);
 }
 
+/* ============================================
+   Conversion Modals (Export Images, Images to PDF, Extract Text)
+   ============================================ */
+
+.conv-modal {
+  max-width: 640px;
+}
+
+.conv-body {
+  flex-direction: column;
+  padding: 24px;
+}
+
+.conv-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.conv-field-row {
+  display: flex;
+  gap: 12px;
+}
+
+.conv-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.conv-field label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.conv-select {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  outline: none;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color var(--transition);
+}
+
+.conv-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.conv-info {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.conv-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.conv-upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: center;
+}
+
+.conv-upload-area:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.conv-upload-area svg {
+  width: 36px;
+  height: 36px;
+  color: var(--color-text-muted);
+}
+
+.conv-upload-area span {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+/* Image grid for Images to PDF */
+.ip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.ip-grid-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 2px solid var(--color-border);
+  cursor: grab;
+  transition: border-color var(--transition);
+}
+
+.ip-grid-item:hover {
+  border-color: var(--color-primary);
+}
+
+.ip-grid-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ip-grid-item .ip-remove-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.ip-grid-item:hover .ip-remove-btn {
+  opacity: 1;
+}
+
+.ip-grid-item .ip-order {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+/* Extract text textarea */
+.conv-textarea {
+  width: 100%;
+  min-height: 300px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  outline: none;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  line-height: 1.6;
+  resize: vertical;
+  transition: border-color var(--transition);
+}
+
+.conv-textarea:focus {
+  border-color: var(--color-primary);
+}
+
+.conv-extract-toolbar {
+  display: flex;
+  gap: 8px;
+}
+
 /* --- Responsive --- */
 
 @media (max-width: 768px) {
@@ -986,6 +1175,14 @@ body {
 
   .toast {
     max-width: 100%;
+  }
+
+  .conv-field-row {
+    flex-direction: column;
+  }
+
+  .ip-grid {
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
   }
 }
 

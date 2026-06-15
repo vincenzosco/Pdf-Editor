@@ -27,19 +27,25 @@ A fully client-side PDF editor built with HTML, CSS, and JavaScript. No backend 
 - **Thumbnail Overlays** — Text appears directly on page thumbnails as you type
 - **PDF Embedding** — All annotations are embedded into the final PDF using professional fonts
 
+### Conversion Tools
+- **PDF to Images** — Export all pages as PNG or JPEG images at 1x, 2x, or 3x resolution, bundled as a ZIP file
+- **Images to PDF** — Upload PNG, JPG, WebP images and combine them into a single PDF with configurable page size and orientation. Supports drag-and-drop reordering.
+- **Extract Text** — Extract selectable text content from PDF pages with copy-to-clipboard and .txt download
+
 ### Performance
 - **Batch rendering** — Pages render 4 at a time for smooth loading on large documents
 - **Responsive** — Works on desktop and mobile devices
-- **Zero dependencies** — Only needs pdf-lib and PDF.js from CDN
+- **Zero dependencies** — Only needs pdf-lib, PDF.js, and JSZip from CDN
 
 ## How It Works
 
-This tool uses two powerful JavaScript libraries:
+This tool uses powerful JavaScript libraries entirely in your browser:
 
 | Library | Purpose |
 |---------|---------|
-| **[pdf-lib](https://pdf-lib.js.org/)** | PDF manipulation — create, modify, rotate, reorder, and merge pages; embed text |
-| **[PDF.js](https://mozilla.github.io/pdf.js/)** | Rendering — display PDF pages as canvas thumbnails and previews |
+| **[pdf-lib](https://pdf-lib.js.org/)** | PDF manipulation — create, modify, rotate, reorder, and merge pages; embed text and images |
+| **[PDF.js](https://mozilla.github.io/pdf.js/)** | Rendering — display PDF pages as canvas thumbnails and previews; extract text content |
+| **[JSZip](https://stuk.github.io/jszip/)** | Create ZIP archives for batch image exports |
 
 All processing happens **locally in your browser**. No files are uploaded to any server.
 
