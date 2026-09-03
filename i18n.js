@@ -11,6 +11,7 @@
   /* ============================ ENGLISH ============================ */
   en: {
     'ln.page.title': 'Folio — Precision PDF Tools',
+    'ln.meta.desc': 'Folio is a free, in-browser PDF toolkit. Annotate, edit, rotate, split, merge, watermark and sign documents — nothing to install, everything stays on your device.',
     'ln.nav.features': 'Features',
     'ln.nav.editor': 'PDF Editor',
     'ln.nav.testimonials': 'Testimonials',
@@ -51,6 +52,7 @@
     'ln.footer.copy': '\u00A9 2026 Folio. All rights reserved.',
 
     'ap.page.title': 'Folio — PDF Editor',
+    'ap.meta.desc': 'Free PDF tools that run entirely in your browser: merge, split, rotate, crop, protect and sign your documents. No installs, no uploads, nothing leaves your device.',
     'ap.logo.aria': 'Folio home',
     'ap.top.title': 'PDF Editor',
     'ap.cat.organize': 'Organize PDF',
@@ -284,6 +286,7 @@
   /* ============================ ITALIANO ============================ */
   it: {
     'ln.page.title': 'Folio — Strumenti PDF di precisione',
+    'ln.meta.desc': 'Folio è un toolkit PDF gratuito che funziona nel browser. Annota, modifica, ruota, dividi, unisci, applica filigrane e firma i documenti — niente da installare, tutto resta sul tuo dispositivo.',
     'ln.nav.features': 'Funzionalità',
     'ln.nav.editor': 'PDF Editor',
     'ln.nav.testimonials': 'Recensioni',
@@ -324,6 +327,7 @@
     'ln.footer.copy': '\u00A9 2026 Folio. Tutti i diritti riservati.',
 
     'ap.page.title': 'Folio — Editor PDF',
+    'ap.meta.desc': 'Strumenti PDF gratuiti che girano interamente nel browser: unisci, dividi, ruota, ritaglia, proteggi e firma i tuoi documenti. Nessuna installazione, nessun upload, nulla esce dal tuo dispositivo.',
     'ap.logo.aria': 'Folio homepage',
     'ap.top.title': 'Editor PDF',
     'ap.cat.organize': 'Organizza PDF',
@@ -557,7 +561,35 @@
 
   var STORE_KEY = 'folio-lang';
 
+  /* Read ?lang=en|it from the current URL (if present). */
+  function langFromUrl() {
+    try {
+      var m = new global.URLSearchParams(global.location.search).get('lang');
+      return (m === 'en' || m === 'it') ? m : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /* Keep the language in sync with the URL (?lang=it / no param for EN). */
+  function syncUrl(lang) {
+    try {
+      if (!global.history || !global.history.replaceState) return;
+      var p = new global.URLSearchParams(global.location.search);
+      if (lang === 'it') {
+        p.set('lang', 'it');
+      } else {
+        p.delete('lang');
+      }
+      var qs = p.toString();
+      var url = global.location.pathname + (qs ? '?' + qs : '') + global.location.hash;
+      global.history.replaceState(global.history.state, '', url);
+    } catch (e) { /* ignore */ }
+  }
+
   function detect() {
+    var fromUrl = langFromUrl();
+    if (fromUrl) return fromUrl;
     try {
       var stored = global.localStorage.getItem(STORE_KEY);
       if (stored === 'en' || stored === 'it') return stored;
@@ -598,6 +630,8 @@
     t: t,
     set: setLang,
     current: current,
-    dict: dict
+    dict: dict,
+    langFromUrl: langFromUrl,
+    syncUrl: syncUrl
   };
 })(window);

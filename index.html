@@ -11,6 +11,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Folio" />
   <meta property="og:locale" content="en_US" />
+  <meta property="og:locale:alternate" content="it_IT" />
   <meta property="og:title" content="Folio — Precision PDF Tools" />
   <meta property="og:description" content="Mark up your PDFs with surgical precision. Annotate, edit and sign documents right in your browser — no install, no upload." />
   <!-- Update og:url / og:image below if the site is hosted at a different address -->
@@ -1794,13 +1795,38 @@
       for (let a = 0; a < ariaEls.length; a++) {
         ariaEls[a].setAttribute('aria-label', FolioI18N.t(ariaEls[a].getAttribute('data-i18n-aria')));
       }
-      const btns = document.querySelectorAll('.lang-btn');
-      for (let b = 0; b < btns.length; b++) {
-        const on = btns[b].getAttribute('data-lang') === lang;
-        btns[b].classList.toggle('active', on);
-        btns[b].setAttribute('aria-pressed', on ? 'true' : 'false');
-      }
+    const btns = document.querySelectorAll('.lang-btn');
+    for (let b = 0; b < btns.length; b++) {
+      const on = btns[b].getAttribute('data-lang') === lang;
+      btns[b].classList.toggle('active', on);
+      btns[b].setAttribute('aria-pressed', on ? 'true' : 'false');
     }
+
+    // Keep og / meta tags and the URL in sync with the chosen language
+    const locale = lang === 'it' ? 'it_IT' : 'en_US';
+    const setMeta = (sel, content) => {
+      const el = document.querySelector(sel);
+      if (el) el.setAttribute('content', content);
+    };
+    setMeta('meta[property="og:locale"]', locale);
+    setMeta('meta[property="og:title"]', FolioI18N.t('ln.page.title'));
+    setMeta('meta[property="og:description"]', FolioI18N.t('ln.meta.desc'));
+    setMeta('meta[name="description"]', FolioI18N.t('ln.meta.desc'));
+    FolioI18N.syncUrl(lang);
+    const links = document.querySelectorAll('a[href]');
+    for (let li = 0; li < links.length; li++) {
+      let href = links[li].getAttribute('href');
+      if (!href || href.charAt(0) === '#' || /^[a-z]+:/i.test(href)) continue;
+      const hashIdx = href.indexOf('#');
+      const hash = hashIdx >= 0 ? href.slice(hashIdx) : '';
+      let path = hashIdx >= 0 ? href.slice(0, hashIdx) : href;
+      path = path.replace(/[?&]lang=(en|it)/, '');
+      if (lang === 'it') {
+        path += (path.indexOf('?') >= 0 ? '&' : '?') + 'lang=it';
+      }
+      links[li].setAttribute('href', path + hash);
+    }
+  }
 
     const langBtns = document.querySelectorAll('.lang-btn');
     for (let lb = 0; lb < langBtns.length; lb++) {

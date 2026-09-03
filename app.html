@@ -11,6 +11,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Folio" />
   <meta property="og:locale" content="it_IT" />
+  <meta property="og:locale:alternate" content="en_US" />
   <meta property="og:title" content="Folio — PDF Editor" />
   <meta property="og:description" content="Strumenti PDF gratuiti direttamente nel browser: unisci, dividi, ruota, ritaglia, proteggi e firma i tuoi documenti. Nessuna installazione, nessun upload." />
   <!-- Update og:url / og:image below if the site is hosted at a different address -->
@@ -1730,6 +1731,31 @@
     const activeItem = document.querySelector('.sidebar-item.active');
     const keep = activeItem ? activeItem.dataset.tool : null;
     init(keep);
+
+    // Keep og / meta tags and the URL in sync with the chosen language
+    const locale = lang === 'it' ? 'it_IT' : 'en_US';
+    const setMeta = (sel, content) => {
+      const el = document.querySelector(sel);
+      if (el) el.setAttribute('content', content);
+    };
+    setMeta('meta[property="og:locale"]', locale);
+    setMeta('meta[property="og:title"]', FolioI18N.t('ap.page.title'));
+    setMeta('meta[property="og:description"]', FolioI18N.t('ap.meta.desc'));
+    setMeta('meta[name="description"]', FolioI18N.t('ap.meta.desc'));
+    FolioI18N.syncUrl(lang);
+    const links = document.querySelectorAll('a[href]');
+    for (let li = 0; li < links.length; li++) {
+      let href = links[li].getAttribute('href');
+      if (!href || href.charAt(0) === '#' || /^[a-z]+:/i.test(href)) continue;
+      const hashIdx = href.indexOf('#');
+      const hash = hashIdx >= 0 ? href.slice(hashIdx) : '';
+      let path = hashIdx >= 0 ? href.slice(0, hashIdx) : href;
+      path = path.replace(/[?&]lang=(en|it)/, '');
+      if (lang === 'it') {
+        path += (path.indexOf('?') >= 0 ? '&' : '?') + 'lang=it';
+      }
+      links[li].setAttribute('href', path + hash);
+    }
   }
 
   const langBtns = document.querySelectorAll('.lang-btn');
