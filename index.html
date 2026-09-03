@@ -4,6 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Folio — Precision PDF Tools</title>
+  <meta name="description" content="Folio is a free, in-browser PDF toolkit. Annotate, edit, rotate, split, merge, watermark and sign documents — nothing to install, everything stays on your device." />
+  <meta name="theme-color" content="#1F4C82" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="apple-touch-icon" href="icon-512.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Folio" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:title" content="Folio — Precision PDF Tools" />
+  <meta property="og:description" content="Mark up your PDFs with surgical precision. Annotate, edit and sign documents right in your browser — no install, no upload." />
+  <!-- Update og:url / og:image below if the site is hosted at a different address -->
+  <meta property="og:url" content="https://vincenzosco.github.io/Pdf-Editor/" />
+  <meta property="og:image" content="https://vincenzosco.github.io/Pdf-Editor/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -239,6 +252,51 @@
     }
     .nav-toggle[aria-expanded="true"] span:nth-child(3) {
       transform: rotate(-45deg) translate(5px, -5px);
+    }
+
+    /* Language switch — segmented pill */
+    .nav-links {
+      margin-left: auto;
+    }
+
+    .lang-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      margin-left: 14px;
+      padding: 3px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.55);
+    }
+
+    .lang-btn {
+      border: none;
+      background: transparent;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-family: var(--body);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .lang-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .lang-btn.active {
+      background: var(--grad-ink);
+      color: #fff;
+      box-shadow: 0 2px 6px -2px rgba(31, 76, 130, 0.5);
+    }
+
+    .lang-btn:focus-visible {
+      outline: 2px solid var(--ink-blue);
+      outline-offset: 1px;
     }
 
     /* ===== HERO ===== */
@@ -1261,6 +1319,11 @@
         display: flex;
       }
 
+      .lang-switch {
+        margin-left: auto;
+        margin-right: 6px;
+      }
+
       .hero {
         padding: calc(var(--nav-height) + 32px) 0 48px;
       }
@@ -1365,22 +1428,27 @@
     }
   </style>
 </head>
-<body>
+<body data-title-key="ln.page.title">
 
   <!-- ===== NAV ===== -->
   <nav aria-label="Main navigation">
     <div class="container">
-      <a href="#" class="logo" aria-label="Folio home">
+      <a href="#" class="logo" aria-label="Folio home" data-i18n-aria="ln.logo.aria">
         <span class="logo-mark" aria-hidden="true"></span>
         Folio
       </a>
 
       <ul class="nav-links" id="navLinks">
-        <li><a href="#features">Features</a></li>
-        <li><a href="app.html">PDF Editor</a></li>
-        <li><a href="#testimonial">Testimonials</a></li>
-        <li><a href="#cta" class="nav-cta">Try for free <span aria-hidden="true">&rarr;</span></a></li>
+        <li><a href="#features" data-i18n="ln.nav.features">Features</a></li>
+        <li><a href="app.html" data-i18n="ln.nav.editor">PDF Editor</a></li>
+        <li><a href="#testimonial" data-i18n="ln.nav.testimonials">Testimonials</a></li>
+        <li><a href="#cta" class="nav-cta"><span data-i18n="ln.nav.cta">Try it</span> <span aria-hidden="true">&rarr;</span></a></li>
       </ul>
+
+      <div class="lang-switch" role="group" aria-label="Language">
+        <button type="button" class="lang-btn" data-lang="en" aria-pressed="false">EN</button>
+        <button type="button" class="lang-btn" data-lang="it" aria-pressed="false">IT</button>
+      </div>
 
       <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation menu" aria-expanded="false">
         <span></span>
@@ -1394,20 +1462,20 @@
   <section class="hero" id="hero">
     <div class="container">
       <div class="hero-content">
-        <h1 class="fade-in visible">
+        <h1 class="fade-in visible" data-i18n-html="ln.hero.titleHtml">
           Mark up your PDFs with<br />
           <span class="highlight">surgical precision</span>
         </h1>
-        <p class="hero-sub fade-in visible fade-in-delay-1">
+        <p class="hero-sub fade-in visible fade-in-delay-1" data-i18n="ln.hero.sub">
           Folio gives you the tools to annotate, edit, and sign documents
           with the care they deserve. Everything stays in your browser.
         </p>
         <div class="fade-in visible fade-in-delay-2">
-          <button class="hero-cta" onclick="location.href='app.html'">
-            Start marking up <span aria-hidden="true">&rarr;</span>
+          <button class="hero-cta" onclick="location.href='app.html'" data-i18n-html="ln.hero.ctaMainHtml">
+            Start for free <span aria-hidden="true">&rarr;</span>
           </button>
-          <a href="app.html" class="hero-cta-secondary">
-            Apri PDF Editor <span aria-hidden="true">&rarr;</span>
+          <a href="app.html" class="hero-cta-secondary" data-i18n-html="ln.hero.ctaAltHtml">
+            Open PDF Editor <span aria-hidden="true">&rarr;</span>
           </a>
         </div>
         <div class="hero-trust fade-in visible fade-in-delay-3">
@@ -1417,12 +1485,12 @@
             <span>MR</span>
             <span style="background:#787C82;font-size:0.625rem;">+</span>
           </div>
-          <span>Loved by teams that work with documents every day</span>
+          <span data-i18n="ln.hero.trust">Loved by teams that work with documents every day</span>
         </div>
       </div>
 
       <!-- ===== SIGNATURE: Annotated Document ===== -->
-      <div class="hero-visual fade-in visible fade-in-delay-1" role="img" aria-label="Interactive document preview showing annotations">
+      <div class="hero-visual fade-in visible fade-in-delay-1" role="img" aria-label="Interactive document preview showing annotations" data-i18n-aria="ln.hero.docAria">
         <div class="document-card" id="docPreview" aria-hidden="true">
           <div class="document-header">
             <h3>Service Agreement</h3>
@@ -1476,7 +1544,7 @@
   <!-- ===== TRUST BAR ===== -->
   <section class="trust-bar fade-in" aria-label="Trusted by">
     <div class="container">
-      <span class="trust-bar-label">Used by teams at</span>          <span class="trust-logo">Design</span>
+      <span class="trust-bar-label" data-i18n="ln.trust.label">Used by teams at</span>          <span class="trust-logo">Design</span>
           <span class="trust-logo">Legal</span>
           <span class="trust-logo">Research</span>
           <span class="trust-logo">Product</span>
@@ -1488,28 +1556,28 @@
   <section class="features" id="features">
     <div class="container">
       <div class="features-header fade-in">
-        <span class="section-label">Capabilities</span>
-        <h2>Everything you need to work with PDFs</h2>
-        <p>Three tools that cover the full document workflow — no subscription pyramid, no hidden limits.</p>
+        <span class="section-label" data-i18n="ln.features.label">Capabilities</span>
+        <h2 data-i18n="ln.features.title">Everything you need to work with PDFs</h2>
+        <p data-i18n="ln.features.sub">Annotate, edit and sign in one workflow — 100% free, no limits, nothing to install.</p>
       </div>
 
       <div class="features-grid">
         <article class="feature-card fade-in fade-in-delay-1">
           <div class="feature-icon" aria-hidden="true">&#9998;</div>
-          <h3>Annotate</h3>
-          <p>Highlight, underline, strike through, and add margin notes. Every mark stays crisp and stays yours.</p>
+          <h3 data-i18n="ln.feat.annotate.title">Annotate</h3>
+          <p data-i18n="ln.feat.annotate.desc">Highlight, underline, strike through, and add margin notes. Every mark stays crisp and stays yours.</p>
         </article>
 
         <article class="feature-card fade-in fade-in-delay-2">
           <div class="feature-icon" aria-hidden="true">&#9997;</div>
-          <h3>Edit</h3>
-          <p>Change text, rearrange pages, and adjust layouts without leaving the document. Full fidelity, always.</p>
+          <h3 data-i18n="ln.feat.edit.title">Edit</h3>
+          <p data-i18n="ln.feat.edit.desc">Change text, rearrange pages, and adjust layouts without leaving the document. Full fidelity, always.</p>
         </article>
 
         <article class="feature-card fade-in fade-in-delay-3">
           <div class="feature-icon" aria-hidden="true">&#10003;</div>
-          <h3>Sign</h3>
-          <p>Draw, type, or upload your signature. Certified signatures that hold up anywhere they're sent.</p>
+          <h3 data-i18n="ln.feat.sign.title">Sign</h3>
+          <p data-i18n="ln.feat.sign.desc">Draw, type, or upload your signature. Certified signatures that hold up anywhere they're sent.</p>
         </article>
       </div>
     </div>
@@ -1519,24 +1587,24 @@
   <section class="demo-section" id="demo">
     <div class="container">
       <div class="demo-content fade-in">
-        <span class="section-label">Workflow</span>
-        <h2>Annotations that look like they were made on paper</h2>
-        <p>
+        <span class="section-label" data-i18n="ln.demo.label">Workflow</span>
+        <h2 data-i18n="ln.demo.title">Annotations that look like they were made on paper</h2>
+        <p data-i18n="ln.demo.p">
           Every highlight, underline, and margin note renders at full resolution.
           Export with annotations baked in or send a clean copy — your choice.
         </p>
         <ul class="demo-list">
           <li>
             <span class="check" aria-hidden="true">&#10003;</span>
-            <span><strong>Layer-based</strong> — annotations sit on their own layer until you're ready to flatten</span>
+            <span data-i18n-html="ln.demo.item1"><strong>Layer-based</strong> — annotations sit on their own layer until you're ready to flatten</span>
           </li>
           <li>
             <span class="check" aria-hidden="true">&#10003;</span>
-            <span><strong>Collaborative</strong> — share a document and see each other's marks in real time</span>
+            <span data-i18n-html="ln.demo.item2"><strong>Collaborative</strong> — share a document and see each other's marks in real time</span>
           </li>
           <li>
             <span class="check" aria-hidden="true">&#10003;</span>
-            <span><strong>Export ready</strong> — PDF/A, flattened, or annotated — whichever your recipient needs</span>
+            <span data-i18n-html="ln.demo.item3"><strong>Export ready</strong> — PDF/A, flattened, or annotated — whichever your recipient needs</span>
           </li>
         </ul>
       </div>
@@ -1567,7 +1635,7 @@
   <section class="testimonial" id="testimonial">
     <div class="container">
       <blockquote class="fade-in">
-        <p>&ldquo;We review dozens of contracts a week. Folio turned that from a chore into something we actually don't mind doing. The annotation tools feel like they were built by people who've done this work.&rdquo;</p>
+        <p data-i18n="ln.quote.text">&ldquo;We review dozens of contracts a week. Folio turned that from a chore into something we actually don't mind doing. The annotation tools feel like they were built by people who've done this work.&rdquo;</p>
         <footer>
           <cite>Legal Operations</cite> — Jordan Chen
         </footer>
@@ -1579,11 +1647,11 @@
   <section class="cta-section" id="cta">
     <div class="container">
       <div class="cta-panel fade-in">
-        <span class="cta-eyebrow">Free to start &mdash; no credit card</span>
-        <h2>Your documents,<br />marked up beautifully</h2>
-        <p>No credit card. No time limit on the free tier. Your first 10 annotations are on us.</p>
-        <a href="app.html" class="cta-button">Open the PDF editor <span aria-hidden="true">&rarr;</span></a>
-        <p class="cta-note">Works in Chrome, Firefox, Safari, and Edge. Nothing to install.</p>
+        <span class="cta-eyebrow" data-i18n="ln.cta.eyebrow">100% free &mdash; no sign-up</span>
+        <h2 data-i18n-html="ln.cta.titleHtml">Your documents,<br />marked up beautifully</h2>
+        <p data-i18n="ln.cta.sub">No sign-up, no uploads, no limits. Everything runs in your browser and your files never leave your device.</p>
+        <a href="app.html" class="cta-button" data-i18n-html="ln.cta.btnHtml">Open the PDF editor <span aria-hidden="true">&rarr;</span></a>
+        <p class="cta-note" data-i18n="ln.cta.note">Works in Chrome, Firefox, Safari, and Edge. Nothing to install.</p>
       </div>
     </div>
   </section>
@@ -1591,21 +1659,22 @@
   <!-- ===== FOOTER ===== -->
   <footer>
     <div class="container">
-      <a href="#" class="logo" aria-label="Folio home">
+      <a href="#" class="logo" aria-label="Folio home" data-i18n-aria="ln.logo.aria">
         <span class="logo-mark" aria-hidden="true"></span>
         Folio
       </a>
       <ul class="footer-links">
-        <li><a href="#">Privacy</a></li>
-        <li><a href="#">Terms</a></li>
-        <li><a href="#">Support</a></li>
-        <li><a href="#">Status</a></li>
+        <li><a href="#" data-i18n="ln.footer.privacy">Privacy</a></li>
+        <li><a href="#" data-i18n="ln.footer.terms">Terms</a></li>
+        <li><a href="#" data-i18n="ln.footer.support">Support</a></li>
+        <li><a href="#" data-i18n="ln.footer.status">Status</a></li>
       </ul>
-      <span class="footer-copy">&copy; 2026 Folio. All rights reserved.</span>
+      <span class="footer-copy" data-i18n="ln.footer.copy">&copy; 2026 Folio. All rights reserved.</span>
     </div>
   </footer>
 
   <!-- ===== JAVASCRIPT ===== -->
+  <script src="i18n.js"></script>
   <script>
     // === Mobile nav toggle ===
     const navToggle = document.getElementById('navToggle');
@@ -1706,6 +1775,41 @@
         card.style.setProperty('--my', ((e.clientY - r.top) / r.height) * 100 + '%');
       });
     });
+
+    // === Language switch (EN / IT) ===
+    function applyLanguage(lang) {
+      document.documentElement.lang = lang;
+      const titleKey = document.body.getAttribute('data-title-key');
+      if (titleKey) document.title = FolioI18N.t(titleKey);
+
+      const txtEls = document.querySelectorAll('[data-i18n]');
+      for (let i = 0; i < txtEls.length; i++) {
+        txtEls[i].textContent = FolioI18N.t(txtEls[i].getAttribute('data-i18n'));
+      }
+      const htmlEls = document.querySelectorAll('[data-i18n-html]');
+      for (let j = 0; j < htmlEls.length; j++) {
+        htmlEls[j].innerHTML = FolioI18N.t(htmlEls[j].getAttribute('data-i18n-html'));
+      }
+      const ariaEls = document.querySelectorAll('[data-i18n-aria]');
+      for (let a = 0; a < ariaEls.length; a++) {
+        ariaEls[a].setAttribute('aria-label', FolioI18N.t(ariaEls[a].getAttribute('data-i18n-aria')));
+      }
+      const btns = document.querySelectorAll('.lang-btn');
+      for (let b = 0; b < btns.length; b++) {
+        const on = btns[b].getAttribute('data-lang') === lang;
+        btns[b].classList.toggle('active', on);
+        btns[b].setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+    }
+
+    const langBtns = document.querySelectorAll('.lang-btn');
+    for (let lb = 0; lb < langBtns.length; lb++) {
+      langBtns[lb].addEventListener('click', function () {
+        FolioI18N.set(this.getAttribute('data-lang'));
+        applyLanguage(FolioI18N.current());
+      });
+    }
+    applyLanguage(FolioI18N.current());
   </script>
 </body>
 </html>

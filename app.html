@@ -4,6 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Folio — PDF Editor</title>
+  <meta name="description" content="Folio è un editor PDF gratuito che funziona nel browser: unisci, dividi, ruota, ritaglia, proteggi e firma i tuoi PDF. Niente da installare: tutto resta sul tuo dispositivo." />
+  <meta name="theme-color" content="#1F4C82" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="apple-touch-icon" href="icon-512.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Folio" />
+  <meta property="og:locale" content="it_IT" />
+  <meta property="og:title" content="Folio — PDF Editor" />
+  <meta property="og:description" content="Strumenti PDF gratuiti direttamente nel browser: unisci, dividi, ruota, ritaglia, proteggi e firma i tuoi documenti. Nessuna installazione, nessun upload." />
+  <!-- Update og:url / og:image below if the site is hosted at a different address -->
+  <meta property="og:url" content="https://vincenzosco.github.io/Pdf-Editor/app.html" />
+  <meta property="og:image" content="https://vincenzosco.github.io/Pdf-Editor/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -69,6 +82,33 @@
     .topbar .topbar-title {
       font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;
       border-left: 1px solid var(--border); padding-left: 16px;
+    }
+
+    /* Language switch — segmented pill */
+    .lang-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      margin-left: auto;
+      padding: 3px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.6);
+    }
+    .lang-btn {
+      border: none; background: transparent; cursor: pointer;
+      padding: 5px 12px; border-radius: 999px;
+      font-family: var(--body); font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.04em; color: var(--text-secondary);
+      transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+    .lang-btn:hover { color: var(--text-primary); }
+    .lang-btn.active {
+      background: var(--grad-ink); color: #fff;
+      box-shadow: 0 2px 6px -2px rgba(31, 76, 130, 0.5);
+    }
+    .lang-btn:focus-visible {
+      outline: 2px solid var(--ink-blue); outline-offset: 1px;
     }
     .topbar-spacer { height: var(--topbar-h); }
 
@@ -391,11 +431,15 @@
     }
   </style>
 </head>
-<body>
+<body data-title-key="ap.page.title">
   <!-- TOP BAR -->
   <header class="topbar">
-    <a href="/" class="logo"><span class="logo-mark"></span>Folio</a>
-    <span class="topbar-title">PDF Editor</span>
+    <a href="/" class="logo" aria-label="Folio home" data-i18n-aria="ap.logo.aria"><span class="logo-mark"></span>Folio</a>
+    <span class="topbar-title" data-i18n="ap.top.title">PDF Editor</span>
+    <div class="lang-switch" role="group" aria-label="Language">
+      <button type="button" class="lang-btn" data-lang="en" aria-pressed="false">EN</button>
+      <button type="button" class="lang-btn" data-lang="it" aria-pressed="false">IT</button>
+    </div>
   </header>
   <div class="topbar-spacer"></div>
 
@@ -411,6 +455,7 @@
     </main>
   </div>
 
+  <script src="i18n.js"></script>
   <script>
   // pdf-lib is vendored locally (vendor/pdf-lib.min.js). Guard anyway so a
   // blocked/missing script never blanks the whole app.
@@ -420,68 +465,70 @@
     : { PDFDocument: null, StandardFonts: null, rgb: null, degrees: null };
 
   // ===== TOOL DEFINITIONS =====
-  const CATEGORIES = [
+  function CATEGORIES() {
+    return [
     {
-      name: 'Organizza PDF', icon: '📄',
+      name: FolioI18N.t('ap.cat.organize'), icon: '📄',
       tools: [
-        { id: 'merge', label: 'Unisci PDF', icon: '⊞', desc: 'Combina più file PDF in un unico documento. Trascina e riordina i file prima di unirli.', type: 'working' },
-        { id: 'split', label: 'Dividi PDF', icon: '⊟', desc: 'Dividi un PDF in più file separati intervallo di pagine.', type: 'working' },
-        { id: 'remove-pages', label: 'Rimuovi pagine', icon: '−', desc: 'Seleziona e rimuovi le pagine che non ti servono dal tuo PDF.', type: 'working' },
-        { id: 'extract-pages', label: 'Estrai pagine', icon: '⤴', desc: 'Estrai pagine specifiche da un PDF per creare un nuovo documento.', type: 'working' },
-        { id: 'reorder', label: 'Organizza pagine', icon: '↕', desc: 'Riordina le pagine del tuo PDF trascinandole nella posizione desiderata.', type: 'working' },
-        { id: 'scan', label: 'Scansiona in PDF', icon: '📷', desc: 'Converti documenti scansionati in PDF modificabile con riconoscimento del testo.', type: 'server' },
+        { id: 'merge', label: FolioI18N.t('ap.t.merge.label'), icon: '⊞', desc: FolioI18N.t('ap.t.merge.desc'), type: 'working' },
+        { id: 'split', label: FolioI18N.t('ap.t.split.label'), icon: '⊟', desc: FolioI18N.t('ap.t.split.desc'), type: 'working' },
+        { id: 'remove-pages', label: FolioI18N.t('ap.t.remove-pages.label'), icon: '−', desc: FolioI18N.t('ap.t.remove-pages.desc'), type: 'working' },
+        { id: 'extract-pages', label: FolioI18N.t('ap.t.extract-pages.label'), icon: '⤴', desc: FolioI18N.t('ap.t.extract-pages.desc'), type: 'working' },
+        { id: 'reorder', label: FolioI18N.t('ap.t.reorder.label'), icon: '↕', desc: FolioI18N.t('ap.t.reorder.desc'), type: 'working' },
+        { id: 'scan', label: FolioI18N.t('ap.t.scan.label'), icon: '📷', desc: FolioI18N.t('ap.t.scan.desc'), type: 'server' },
       ]
     },
     {
-      name: 'Ottimizza PDF', icon: '⚡',
+      name: FolioI18N.t('ap.cat.optimize'), icon: '⚡',
       tools: [
-        { id: 'compress', label: 'Comprimi PDF', icon: '▼', desc: 'Riduci la dimensione del file PDF mantenendo una buona qualità.', type: 'server' },
-        { id: 'repair', label: 'Ripara PDF', icon: '🔧', desc: 'Ripara file PDF danneggiati o corrotti.', type: 'server' },
-        { id: 'ocr', label: 'OCR PDF', icon: '🔍', desc: 'Rendi ricercabile e selezionabile il testo nei PDF scansionati.', type: 'server' },
+        { id: 'compress', label: FolioI18N.t('ap.t.compress.label'), icon: '▼', desc: FolioI18N.t('ap.t.compress.desc'), type: 'server' },
+        { id: 'repair', label: FolioI18N.t('ap.t.repair.label'), icon: '🔧', desc: FolioI18N.t('ap.t.repair.desc'), type: 'server' },
+        { id: 'ocr', label: FolioI18N.t('ap.t.ocr.label'), icon: '🔍', desc: FolioI18N.t('ap.t.ocr.desc'), type: 'server' },
       ]
     },
     {
-      name: 'Converti in PDF', icon: '➜',
+      name: FolioI18N.t('ap.cat.toPdf'), icon: '➜',
       tools: [
-        { id: 'jpg-to-pdf', label: 'JPG in PDF', icon: '🖼', desc: 'Converti le tue immagini JPG in un file PDF. Puoi unire più immagini in un unico documento.', type: 'working' },
-        { id: 'word-to-pdf', label: 'WORD in PDF', icon: '📝', desc: 'Converti documenti Word in formato PDF.', type: 'server' },
-        { id: 'ppt-to-pdf', label: 'POWERPOINT in PDF', icon: '📊', desc: 'Converti presentazioni PowerPoint in formato PDF.', type: 'server' },
-        { id: 'excel-to-pdf', label: 'EXCEL in PDF', icon: '📈', desc: 'Converti fogli di calcolo Excel in formato PDF.', type: 'server' },
-        { id: 'html-to-pdf', label: 'HTML in PDF', icon: '🌐', desc: 'Converti testo HTML o Markdown in un file PDF ben formattato.', type: 'working' },
+        { id: 'jpg-to-pdf', label: FolioI18N.t('ap.t.jpg-to-pdf.label'), icon: '🖼', desc: FolioI18N.t('ap.t.jpg-to-pdf.desc'), type: 'working' },
+        { id: 'word-to-pdf', label: FolioI18N.t('ap.t.word-to-pdf.label'), icon: '📝', desc: FolioI18N.t('ap.t.word-to-pdf.desc'), type: 'server' },
+        { id: 'ppt-to-pdf', label: FolioI18N.t('ap.t.ppt-to-pdf.label'), icon: '📊', desc: FolioI18N.t('ap.t.ppt-to-pdf.desc'), type: 'server' },
+        { id: 'excel-to-pdf', label: FolioI18N.t('ap.t.excel-to-pdf.label'), icon: '📈', desc: FolioI18N.t('ap.t.excel-to-pdf.desc'), type: 'server' },
+        { id: 'html-to-pdf', label: FolioI18N.t('ap.t.html-to-pdf.label'), icon: '🌐', desc: FolioI18N.t('ap.t.html-to-pdf.desc'), type: 'working' },
       ]
     },
     {
-      name: 'Converti da PDF', icon: '✚',
+      name: FolioI18N.t('ap.cat.fromPdf'), icon: '✚',
       tools: [
-        { id: 'pdf-to-jpg', label: 'PDF in JPG', icon: '🖼', desc: 'Converti ogni pagina del PDF in un\'immagine JPG.', type: 'server' },
-        { id: 'pdf-to-word', label: 'PDF in WORD', icon: '📝', desc: 'Converti PDF in documenti Word modificabili.', type: 'server' },
-        { id: 'pdf-to-ppt', label: 'PDF in POWERPOINT', icon: '📊', desc: 'Converti PDF in presentazioni PowerPoint modificabili.', type: 'server' },
-        { id: 'pdf-to-excel', label: 'PDF in EXCEL', icon: '📈', desc: 'Converti tabelle da PDF a fogli Excel.', type: 'server' },
-        { id: 'pdf-to-pdfa', label: 'PDF in PDF/A', icon: '📋', desc: 'Converti PDF standard in formato PDF/A per l\'archiviazione a lungo termine.', type: 'server' },
+        { id: 'pdf-to-jpg', label: FolioI18N.t('ap.t.pdf-to-jpg.label'), icon: '🖼', desc: FolioI18N.t('ap.t.pdf-to-jpg.desc'), type: 'server' },
+        { id: 'pdf-to-word', label: FolioI18N.t('ap.t.pdf-to-word.label'), icon: '📝', desc: FolioI18N.t('ap.t.pdf-to-word.desc'), type: 'server' },
+        { id: 'pdf-to-ppt', label: FolioI18N.t('ap.t.pdf-to-ppt.label'), icon: '📊', desc: FolioI18N.t('ap.t.pdf-to-ppt.desc'), type: 'server' },
+        { id: 'pdf-to-excel', label: FolioI18N.t('ap.t.pdf-to-excel.label'), icon: '📈', desc: FolioI18N.t('ap.t.pdf-to-excel.desc'), type: 'server' },
+        { id: 'pdf-to-pdfa', label: FolioI18N.t('ap.t.pdf-to-pdfa.label'), icon: '📋', desc: FolioI18N.t('ap.t.pdf-to-pdfa.desc'), type: 'server' },
       ]
     },
     {
-      name: 'Modifica PDF', icon: '✏️',
+      name: FolioI18N.t('ap.cat.edit'), icon: '✏️',
       tools: [
-        { id: 'rotate', label: 'Ruota PDF', icon: '↻', desc: 'Ruota le pagine del PDF a 90°, 180° o 270°.', type: 'working' },
-        { id: 'page-numbers', label: 'Numeri di pagina', icon: '#', desc: 'Aggiungi numeri di pagina al tuo PDF con posizione e formato personalizzabili.', type: 'working' },
-        { id: 'watermark', label: 'Filigrana', icon: '💧', desc: 'Aggiungi un testo in filigrana (watermark) a ogni pagina del PDF.', type: 'working' },
-        { id: 'crop', label: 'Ritaglia PDF', icon: '✂', desc: 'Ritaglia i margini del PDF per ottenere l\'area desiderata.', type: 'working' },
-        { id: 'edit-text', label: 'Modifica testo', icon: '✎', desc: 'Aggiungi nuovo testo o sovrascrivi contenuti esistenti nel PDF.', type: 'working' },
-        { id: 'forms', label: 'Moduli PDF', icon: '📋', desc: 'Compila e gestisci moduli PDF interattivi con campi da riempire.', type: 'server' },
+        { id: 'rotate', label: FolioI18N.t('ap.t.rotate.label'), icon: '↻', desc: FolioI18N.t('ap.t.rotate.desc'), type: 'working' },
+        { id: 'page-numbers', label: FolioI18N.t('ap.t.page-numbers.label'), icon: '#', desc: FolioI18N.t('ap.t.page-numbers.desc'), type: 'working' },
+        { id: 'watermark', label: FolioI18N.t('ap.t.watermark.label'), icon: '💧', desc: FolioI18N.t('ap.t.watermark.desc'), type: 'working' },
+        { id: 'crop', label: FolioI18N.t('ap.t.crop.label'), icon: '✂', desc: FolioI18N.t('ap.t.crop.desc'), type: 'working' },
+        { id: 'edit-text', label: FolioI18N.t('ap.t.edit-text.label'), icon: '✎', desc: FolioI18N.t('ap.t.edit-text.desc'), type: 'working' },
+        { id: 'forms', label: FolioI18N.t('ap.t.forms.label'), icon: '📋', desc: FolioI18N.t('ap.t.forms.desc'), type: 'server' },
       ]
     },
     {
-      name: 'Protezione PDF', icon: '🔒',
+      name: FolioI18N.t('ap.cat.protect'), icon: '🔒',
       tools: [
-        { id: 'unlock', label: 'Sblocca PDF', icon: '🔓', desc: 'Rimuovi la protezione tramite password da un PDF.', type: 'working' },
-        { id: 'protect', label: 'Proteggi PDF', icon: '🔐', desc: 'Aggiungi una password di apertura o di modifica al tuo PDF.', type: 'working' },
-        { id: 'sign', label: 'Firma PDF', icon: '✍', desc: 'Aggiungi una firma digitale o disegnata a mano al tuo PDF.', type: 'server' },
-        { id: 'redact', label: 'Censura PDF', icon: '⬛', desc: 'Oscura permanentemente informazioni sensibili nel PDF.', type: 'server' },
-        { id: 'compare', label: 'Confronta PDF', icon: '⇔', desc: 'Confronta due documenti PDF e mostra le differenze.', type: 'server' },
+        { id: 'unlock', label: FolioI18N.t('ap.t.unlock.label'), icon: '🔓', desc: FolioI18N.t('ap.t.unlock.desc'), type: 'working' },
+        { id: 'protect', label: FolioI18N.t('ap.t.protect.label'), icon: '🔐', desc: FolioI18N.t('ap.t.protect.desc'), type: 'working' },
+        { id: 'sign', label: FolioI18N.t('ap.t.sign.label'), icon: '✍', desc: FolioI18N.t('ap.t.sign.desc'), type: 'server' },
+        { id: 'redact', label: FolioI18N.t('ap.t.redact.label'), icon: '⬛', desc: FolioI18N.t('ap.t.redact.desc'), type: 'server' },
+        { id: 'compare', label: FolioI18N.t('ap.t.compare.label'), icon: '⇔', desc: FolioI18N.t('ap.t.compare.desc'), type: 'server' },
       ]
     },
-  ];
+    ];
+  }
 
   // ===== BUILD UI =====
   const sidebar = document.getElementById('sidebar');
@@ -489,7 +536,7 @@
 
   function buildSidebar() {
     let html = '';
-    CATEGORIES.forEach((cat, ci) => {
+    CATEGORIES().forEach((cat, ci) => {
       html += `<div class="sidebar-category">
         <div class="sidebar-category-header ${ci > 0 ? 'collapsed' : ''}" data-cat="${ci}">
           <span>${cat.icon} ${cat.name}</span>
@@ -526,7 +573,7 @@
 
   function buildToolSections() {
     let html = '';
-    CATEGORIES.forEach(cat => {
+    CATEGORIES().forEach(cat => {
       cat.tools.forEach(tool => {
         html += `<div class="tool-section" id="tool-${tool.id}">
           <h2>${tool.icon} ${tool.label}</h2>
@@ -541,9 +588,8 @@
   function buildToolContent(tool) {
     if (tool.type === 'server') {
       return `<div class="placeholder-card">
-        <div class="pl-icon">🚧</div>
-        <h3>Presto disponibile</h3>
-        <p>Questa funzione richiede l'elaborazione lato server. Stiamo lavorando per renderla disponibile al più presto. Per ora, puoi provare gli altri strumenti di modifica PDF già funzionanti.</p>
+        <h3>${FolioI18N.t('ap.soon.title')}</h3>
+        <p>${FolioI18N.t('ap.soon.body')}</p>
       </div>`;
     }
     switch (tool.id) {
@@ -567,10 +613,10 @@
 
   // ===== UI HELPERS =====
   function fileUploadHTML(opts = {}) {
-    const { id = 'file-input', label = 'Carica un file PDF', accept = '.pdf', multi = false, icon = '📄' } = opts;
+    const { id = 'file-input', label = FolioI18N.t('ap.upload.btnPdf'), accept = '.pdf', multi = false, icon = '📄' } = opts;
     return `<div class="upload-zone ${multi ? 'multi' : ''}" id="upload-${id}" data-multi="${multi}">
       <div class="upload-icon">${icon}</div>
-      <p>${multi ? 'Trascina i file qui o' : 'Trascina il file qui o'}</p>
+      <p>${multi ? FolioI18N.t('ap.upload.dropMulti') : FolioI18N.t('ap.upload.dropSingle')}</p>
       <button class="upload-btn" type="button">${label}</button>
       <input type="file" id="${id}" accept="${accept}" ${multi ? 'multiple' : ''} />
       <div class="file-list" id="file-list-${id}"></div>
@@ -639,144 +685,144 @@
   // ===== TOOL UIs =====
   function mergeUI() {
     return `
-      ${fileUploadHTML({ id: 'merge-input', label: 'Carica file PDF', multi: true, icon: '📑' })}
+      ${fileUploadHTML({ id: 'merge-input', label: FolioI18N.t('ap.upload.btnPdfs'), multi: true, icon: '📑' })}
       <div class="tool-actions">
-        <button class="btn-primary" id="merge-btn" disabled><span>⊞</span> Unisci PDF</button>
+        <button class="btn-primary" id="merge-btn" disabled><span>⊞</span> ${FolioI18N.t('ap.merge.btn')}</button>
       </div>
       <div class="tool-status" id="merge-status"></div>`;
   }
 
   function splitUI() {
     return `
-      ${fileUploadHTML({ id: 'split-input', label: 'Carica PDF' })}
+      ${fileUploadHTML({ id: 'split-input', label: FolioI18N.t('ap.upload.btnPdf') })}
       <div class="tool-controls" id="split-controls" style="display:none;">
         <div class="control-row">
           <div class="control-group">
-            <label>Opzione di divisione</label>
+            <label>${FolioI18N.t('ap.split.mode')}</label>
             <select id="split-mode">
-              <option value="range">Intervallo di pagine</option>
-              <option value="every">Ogni N pagine</option>
+              <option value="range">${FolioI18N.t('ap.split.rangeOpt')}</option>
+              <option value="every">${FolioI18N.t('ap.split.everyOpt')}</option>
             </select>
           </div>
           <div class="control-group" id="split-range-group">
-            <label>Pagine (es: 1-3, 5, 7-9)</label>
+            <label>${FolioI18N.t('ap.split.rangeLabel')}</label>
             <input type="text" id="split-range" placeholder="1-3, 5, 7-9" value="1-2" />
           </div>
           <div class="control-group" id="split-every-group" style="display:none;">
-            <label>Ogni</label>
+            <label>${FolioI18N.t('ap.split.everyLabel')}</label>
             <input type="number" id="split-every" value="2" min="1" max="100" />
           </div>
         </div>
       </div>
       <div class="tool-actions">
-        <button class="btn-primary" id="split-btn" disabled><span>⊟</span> Dividi PDF</button>
+        <button class="btn-primary" id="split-btn" disabled><span>⊟</span> ${FolioI18N.t('ap.split.btn')}</button>
       </div>
       <div class="tool-status" id="split-status"></div>`;
   }
 
   function removePagesUI() {
     return `
-      ${fileUploadHTML({ id: 'remove-input', label: 'Carica PDF' })}
+      ${fileUploadHTML({ id: 'remove-input', label: FolioI18N.t('ap.upload.btnPdf') })}
       <div class="tool-controls" id="remove-controls" style="display:none;">
         <div class="control-row">
           <div class="control-group">
-            <label>Pagine da rimuovere (es: 1, 3, 5-7)</label>
+            <label>${FolioI18N.t('ap.remove.label')}</label>
             <input type="text" id="remove-pages-input" placeholder="1, 3, 5-7" />
           </div>
         </div>
-        <p style="font-size:0.8rem;color:var(--text-secondary);margin-top:8px;">Totale pagine: <span id="remove-total">0</span></p>
+        <p style="font-size:0.8rem;color:var(--text-secondary);margin-top:8px;">${FolioI18N.t('ap.remove.total')}<span id="remove-total">0</span></p>
       </div>
       <div class="tool-actions">
-        <button class="btn-primary" id="remove-btn" disabled><span>−</span> Rimuovi pagine</button>
+        <button class="btn-primary" id="remove-btn" disabled><span>−</span> ${FolioI18N.t('ap.remove.btn')}</button>
       </div>
       <div class="tool-status" id="remove-status"></div>`;
   }
 
   function extractPagesUI() {
     return `
-      ${fileUploadHTML({ id: 'extract-input', label: 'Carica PDF' })}
+      ${fileUploadHTML({ id: 'extract-input', label: FolioI18N.t('ap.upload.btnPdf') })}
       <div class="tool-controls" id="extract-controls" style="display:none;">
         <div class="control-row">
           <div class="control-group">
-            <label>Pagine da estrarre (es: 1, 3, 5-7)</label>
+            <label>${FolioI18N.t('ap.extract.label')}</label>
             <input type="text" id="extract-pages-input" placeholder="1, 3, 5-7" />
           </div>
         </div>
-        <p style="font-size:0.8rem;color:var(--text-secondary);margin-top:8px;">Totale pagine: <span id="extract-total">0</span></p>
+        <p style="font-size:0.8rem;color:var(--text-secondary);margin-top:8px;">${FolioI18N.t('ap.extract.total')}<span id="extract-total">0</span></p>
       </div>
       <div class="tool-actions">
-        <button class="btn-primary" id="extract-btn" disabled><span>⤴</span> Estrai pagine</button>
+        <button class="btn-primary" id="extract-btn" disabled><span>⤴</span> ${FolioI18N.t('ap.extract.btn')}</button>
       </div>
       <div class="tool-status" id="extract-status"></div>`;
   }
 
   function reorderUI() {
     return `
-      ${fileUploadHTML({ id: 'reorder-input', label: 'Carica PDF' })}
+      ${fileUploadHTML({ id: 'reorder-input', label: FolioI18N.t('ap.upload.btnPdf') })}
       <div class="tool-controls" id="reorder-controls" style="display:none;">
-        <p style="font-size:0.85rem;margin-bottom:10px;">Trascina le pagine per riordinarle:</p>
+        <p style="font-size:0.85rem;margin-bottom:10px;">${FolioI18N.t('ap.reorder.hint')}</p>
         <div class="page-list" id="reorder-page-list"></div>
       </div>
       <div class="tool-actions">
-        <button class="btn-primary" id="reorder-btn" disabled><span>↕</span> Applica ordine</button>
+        <button class="btn-primary" id="reorder-btn" disabled><span>↕</span> ${FolioI18N.t('ap.reorder.btn')}</button>
       </div>
       <div class="tool-status" id="reorder-status"></div>`;
   }
 
   function rotateUI() {
     return `
-      ${fileUploadHTML({ id: 'rotate-input', label: 'Carica PDF' })}
+      ${fileUploadHTML({ id: 'rotate-input', label: FolioI18N.t('ap.upload.btnPdf') })}
       <div class="tool-controls" id="rotate-controls" style="display:none;">
         <div class="control-row">
           <div class="control-group">
-            <label>Rotazione</label>
+            <label>${FolioI18N.t('ap.rotate.angleLabel')}</label>
             <select id="rotate-angle">
-              <option value="90">90° (destra)</option>
-              <option value="180">180°</option>
-              <option value="270">90° (sinistra)</option>
+              <option value="90">${FolioI18N.t('ap.rotate.right')}</option>
+              <option value="180">${FolioI18N.t('ap.rotate.half')}</option>
+              <option value="270">${FolioI18N.t('ap.rotate.left')}</option>
             </select>
           </div>
           <div class="control-group">
-            <label>Applica a</label>
+            <label>${FolioI18N.t('ap.rotate.targetLabel')}</label>
             <select id="rotate-target">
-              <option value="all">Tutte le pagine</option>
-              <option value="range">Pagine specifiche</option>
+              <option value="all">${FolioI18N.t('ap.rotate.all')}</option>
+              <option value="range">${FolioI18N.t('ap.rotate.some')}</option>
             </select>
           </div>
           <div class="control-group" id="rotate-range-group" style="display:none;">
-            <label>Pagine (es: 1, 3, 5-7)</label>
+            <label>${FolioI18N.t('ap.rotate.rangeLabel')}</label>
             <input type="text" id="rotate-range-input" placeholder="1, 3, 5-7" />
           </div>
         </div>
       </div>
       <div class="tool-actions">
-        <button class="btn-primary" id="rotate-btn" disabled><span>↻</span> Ruota PDF</button>
+        <button class="btn-primary" id="rotate-btn" disabled><span>↻</span> ${FolioI18N.t('ap.rotate.btn')}</button>
       </div>
       <div class="tool-status" id="rotate-status"></div>`;
   }
 
   function pageNumbersUI() {
     return `
-      ${fileUploadHTML({ id: 'page-input', label: 'Carica PDF' })}
+      ${fileUploadHTML({ id: 'page-input', label: FolioI18N.t('ap.upload.btnPdf') })}
       <div class="tool-controls" id="page-controls" style="display:none;">
         <div class="control-row">
           <div class="control-group">
-            <label>Posizione</label>
+            <label>${FolioI18N.t('ap.pagenum.posLabel')}</label>
             <select id="page-pos">
-              <option value="bottom-center">In basso al centro</option>
-              <option value="bottom-right">In basso a destra</option>
-              <option value="bottom-left">In basso a sinistra</option>
-              <option value="top-center">In alto al centro</option>
-              <option value="top-right">In alto a destra</option>
-              <option value="top-left">In alto a sinistra</option>
+              <option value="bottom-center">${FolioI18N.t('ap.pagenum.pos.bc')}</option>
+              <option value="bottom-right">${FolioI18N.t('ap.pagenum.pos.br')}</option>
+              <option value="bottom-left">${FolioI18N.t('ap.pagenum.pos.bl')}</option>
+              <option value="top-center">${FolioI18N.t('ap.pagenum.pos.tc')}</option>
+              <option value="top-right">${FolioI18N.t('ap.pagenum.pos.tr')}</option>
+              <option value="top-left">${FolioI18N.t('ap.pagenum.pos.tl')}</option>
             </select>
           </div>
           <div class="control-group">
-            <label>Numero iniziale</label>
+            <label>${FolioI18N.t('ap.pagenum.startLabel')}</label>
             <input type="number" id="page-start" value="1" min="1" />
           </div>
           <div class="control-group">
-            <label>Formato</label>
+            <label>${FolioI18N.t('ap.pagenum.fmtLabel')}</label>
             <select id="page-format">
               <option value="1">1, 2, 3</option>
               <option value="01">01, 02, 03</option>
@@ -787,41 +833,41 @@
         </div>
       </div>
       <div class="tool-actions">
-        <button class="btn-primary" id="page-btn" disabled><span>#</span> Aggiungi numeri</button>
+        <button class="btn-primary" id="page-btn" disabled><span>#</span> ${FolioI18N.t('ap.pagenum.btn')}</button>
       </div>
       <div class="tool-status" id="page-status"></div>`;
   }
 
   function watermarkUI() {
     return `
-      ${fileUploadHTML({ id: 'wm-input', label: 'Carica PDF' })}
+      ${fileUploadHTML({ id: 'wm-input', label: FolioI18N.t('ap.upload.btnPdf') })}
       <div class="tool-controls" id="wm-controls" style="display:none;">
         <div class="control-row">
           <div class="control-group">
-            <label>Testo filigrana</label>
+            <label>${FolioI18N.t('ap.wm.textLabel')}</label>
             <input type="text" id="wm-text" value="BOZZA" />
           </div>
           <div class="control-group">
-            <label>Opacità</label>
+            <label>${FolioI18N.t('ap.wm.opacityLabel')}</label>
             <input type="number" id="wm-opacity" value="20" min="5" max="80" />
           </div>
         </div>
         <div class="control-row">
           <div class="control-group">
-            <label>Colore</label>
+            <label>${FolioI18N.t('ap.wm.colorLabel')}</label>
             <div class="color-picker-wrap">
               <input type="color" id="wm-color" value="#D13433" />
             </div>
           </div>
           <div class="control-group">
-            <label>Dimensione carattere</label>
+            <label>${FolioI18N.t('ap.wm.sizeLabel')}</label>
             <input type="number" id="wm-size" value="60" min="12" max="200" />
           </div>
           <div class="control-group">
-            <label>Rotazione</label>
+            <label>${FolioI18N.t('ap.wm.rotLabel')}</label>
             <select id="wm-rotation">
-              <option value="-45">-45° (diagonale)</option>
-              <option value="0">0° (orizzontale)</option>
+              <option value="-45">${FolioI18N.t('ap.wm.rotDiag')}</option>
+              <option value="0">${FolioI18N.t('ap.wm.rotHor')}</option>
               <option value="45">45°</option>
               <option value="90">90°</option>
             </select>
@@ -829,131 +875,131 @@
         </div>
       </div>
       <div class="tool-actions">
-        <button class="btn-primary" id="wm-btn" disabled><span>💧</span> Applica filigrana</button>
+        <button class="btn-primary" id="wm-btn" disabled><span>💧</span> ${FolioI18N.t('ap.wm.btn')}</button>
       </div>
       <div class="tool-status" id="wm-status"></div>`;
   }
 
   function cropUI() {
     return `
-      ${fileUploadHTML({ id: 'crop-input', label: 'Carica PDF' })}
+      ${fileUploadHTML({ id: 'crop-input', label: FolioI18N.t('ap.upload.btnPdf') })}
       <div class="tool-controls" id="crop-controls" style="display:none;">
         <div class="control-row">
           <div class="control-group">
-            <label>Margine sinistro (mm)</label>
+            <label>${FolioI18N.t('ap.crop.left')}</label>
             <input type="number" id="crop-left" value="10" min="0" max="50" />
           </div>
           <div class="control-group">
-            <label>Margine destro (mm)</label>
+            <label>${FolioI18N.t('ap.crop.right')}</label>
             <input type="number" id="crop-right" value="10" min="0" max="50" />
           </div>
           <div class="control-group">
-            <label>Margine superiore (mm)</label>
+            <label>${FolioI18N.t('ap.crop.top')}</label>
             <input type="number" id="crop-top" value="10" min="0" max="50" />
           </div>
           <div class="control-group">
-            <label>Margine inferiore (mm)</label>
+            <label>${FolioI18N.t('ap.crop.bottom')}</label>
             <input type="number" id="crop-bottom" value="10" min="0" max="50" />
           </div>
         </div>
       </div>
       <div class="tool-actions">
-        <button class="btn-primary" id="crop-btn" disabled><span>✂</span> Ritaglia PDF</button>
+        <button class="btn-primary" id="crop-btn" disabled><span>✂</span> ${FolioI18N.t('ap.crop.btn')}</button>
       </div>
       <div class="tool-status" id="crop-status"></div>`;
   }
 
   function editTextUI() {
     return `
-      ${fileUploadHTML({ id: 'edit-input', label: 'Carica PDF' })}
+      ${fileUploadHTML({ id: 'edit-input', label: FolioI18N.t('ap.upload.btnPdf') })}
       <div class="tool-controls" id="edit-controls" style="display:none;">
         <div class="control-row">
           <div class="control-group" style="flex:1;">
-            <label>Testo da aggiungere</label>
-            <input type="text" id="edit-text" placeholder="Inserisci il testo..." />
+            <label>${FolioI18N.t('ap.edittext.textLabel')}</label>
+            <input type="text" id="edit-text" placeholder="${FolioI18N.t('ap.edittext.placeholder')}" />
           </div>
         </div>
         <div class="control-row">
           <div class="control-group">
-            <label>Posizione X (punti)</label>
+            <label>${FolioI18N.t('ap.edittext.xLabel')}</label>
             <input type="number" id="edit-x" value="50" min="0" />
           </div>
           <div class="control-group">
-            <label>Posizione Y (punti)</label>
+            <label>${FolioI18N.t('ap.edittext.yLabel')}</label>
             <input type="number" id="edit-y" value="50" min="0" />
           </div>
           <div class="control-group">
-            <label>Dimensione</label>
+            <label>${FolioI18N.t('ap.edittext.sizeLabel')}</label>
             <input type="number" id="edit-size" value="12" min="4" max="100" />
           </div>
           <div class="control-group">
-            <label>Colore</label>
+            <label>${FolioI18N.t('ap.edittext.colorLabel')}</label>
             <div class="color-picker-wrap">
               <input type="color" id="edit-color" value="#1B1C20" />
             </div>
           </div>
         </div>
-        <p style="font-size:0.8rem;color:var(--text-secondary);">Il testo verrà aggiunto a ogni pagina. Per modificare testo esistente, usa il colore di sfondo per coprirlo.</p>
+        <p style="font-size:0.8rem;color:var(--text-secondary);">${FolioI18N.t('ap.edittext.hint')}</p>
       </div>
       <div class="tool-actions">
-        <button class="btn-primary" id="edit-btn" disabled><span>✎</span> Aggiungi testo</button>
+        <button class="btn-primary" id="edit-btn" disabled><span>✎</span> ${FolioI18N.t('ap.edittext.btn')}</button>
       </div>
       <div class="tool-status" id="edit-status"></div>`;
   }
 
   function unlockUI() {
     return `
-      ${fileUploadHTML({ id: 'unlock-input', label: 'Carica PDF protetto' })}
+      ${fileUploadHTML({ id: 'unlock-input', label: FolioI18N.t('ap.upload.btnProtected') })}
       <div class="tool-controls" id="unlock-controls" style="display:none;">
         <div class="control-row">
           <div class="control-group">
-            <label>Password del PDF</label>
-            <input type="password" id="unlock-password" placeholder="Inserisci la password" />
+            <label>${FolioI18N.t('ap.unlock.pwLabel')}</label>
+            <input type="password" id="unlock-password" placeholder="${FolioI18N.t('ap.unlock.pwPlaceholder')}" />
           </div>
         </div>
       </div>
       <div class="tool-actions">
-        <button class="btn-primary" id="unlock-btn" disabled><span>🔓</span> Sblocca PDF</button>
+        <button class="btn-primary" id="unlock-btn" disabled><span>🔓</span> ${FolioI18N.t('ap.unlock.btn')}</button>
       </div>
       <div class="tool-status" id="unlock-status"></div>`;
   }
 
   function protectUI() {
     return `
-      ${fileUploadHTML({ id: 'protect-input', label: 'Carica PDF' })}
+      ${fileUploadHTML({ id: 'protect-input', label: FolioI18N.t('ap.upload.btnPdf') })}
       <div class="tool-controls" id="protect-controls" style="display:none;">
         <div class="control-row">
           <div class="control-group">
-            <label>Password di apertura</label>
-            <input type="password" id="protect-user-pw" placeholder="Lascia vuoto per nessuna password" />
+            <label>${FolioI18N.t('ap.protect.userLabel')}</label>
+            <input type="password" id="protect-user-pw" placeholder="${FolioI18N.t('ap.protect.userPlaceholder')}" />
           </div>
           <div class="control-group">
-            <label>Password di modifica</label>
-            <input type="password" id="protect-owner-pw" placeholder="Proteggi modifica" />
+            <label>${FolioI18N.t('ap.protect.ownerLabel')}</label>
+            <input type="password" id="protect-owner-pw" placeholder="${FolioI18N.t('ap.protect.ownerPlaceholder')}" />
           </div>
         </div>
       </div>
       <div class="tool-actions">
-        <button class="btn-primary" id="protect-btn" disabled><span>🔐</span> Proteggi PDF</button>
+        <button class="btn-primary" id="protect-btn" disabled><span>🔐</span> ${FolioI18N.t('ap.protect.btn')}</button>
       </div>
       <div class="tool-status" id="protect-status"></div>`;
   }
 
   function jpgToPdfUI() {
     return `
-      ${fileUploadHTML({ id: 'jpg-input', label: 'Carica immagini', accept: '.jpg,.jpeg,.png,.webp', multi: true, icon: '🖼️' })}
+      ${fileUploadHTML({ id: 'jpg-input', label: FolioI18N.t('ap.upload.btnImages'), accept: '.jpg,.jpeg,.png,.webp', multi: true, icon: '🖼️' })}
       <div class="tool-controls" id="jpg-controls" style="display:none;">
         <div class="control-row">
           <div class="control-group">
-            <label>Orientamento pagina</label>
+            <label>${FolioI18N.t('ap.jpg.orientLabel')}</label>
             <select id="jpg-orientation">
-              <option value="auto">Automatico</option>
-              <option value="portrait">Verticale</option>
-              <option value="landscape">Orizzontale</option>
+              <option value="auto">${FolioI18N.t('ap.jpg.orientAuto')}</option>
+              <option value="portrait">${FolioI18N.t('ap.jpg.orientPortrait')}</option>
+              <option value="landscape">${FolioI18N.t('ap.jpg.orientLandscape')}</option>
             </select>
           </div>
           <div class="control-group">
-            <label>Formato pagina</label>
+            <label>${FolioI18N.t('ap.jpg.formatLabel')}</label>
             <select id="jpg-format">
               <option value="A4">A4</option>
               <option value="LETTER">Letter</option>
@@ -963,7 +1009,7 @@
         </div>
       </div>
       <div class="tool-actions">
-        <button class="btn-primary" id="jpg-btn" disabled><span>🖼</span> Crea PDF</button>
+        <button class="btn-primary" id="jpg-btn" disabled><span>🖼</span> ${FolioI18N.t('ap.jpg.btn')}</button>
       </div>
       <div class="tool-status" id="jpg-status"></div>`;
   }
@@ -973,26 +1019,19 @@
       <div class="tool-controls">
         <div class="control-row">
           <div class="control-group" style="flex:1;">
-            <label>Inserisci testo o HTML</label>
-            <textarea id="html-input" class="tool-textarea" rows="8" placeholder="Scrivi qui il tuo testo o HTML..."># Titolo del documento
-
-Questo è un paragrafo di esempio.
-Il testo verrà convertito in un PDF ben formattato.
-
-- Elemento lista 1
-- Elemento lista 2
-- Elemento lista 3</textarea>
+            <label>${FolioI18N.t('ap.html.textLabel')}</label>
+            <textarea id="html-input" class="tool-textarea" rows="8" placeholder="${FolioI18N.t('ap.html.textLabel')}">${FolioI18N.t('ap.html.sample')}</textarea>
           </div>
         </div>
         <div class="control-row">
           <div class="control-group">
-            <label>Titolo del documento</label>
-            <input type="text" id="html-title" value="Documento" />
+            <label>${FolioI18N.t('ap.html.titleLabel')}</label>
+            <input type="text" id="html-title" value="${FolioI18N.t('ap.html.titleDefault')}" />
           </div>
         </div>
       </div>
       <div class="tool-actions">
-        <button class="btn-primary" id="html-btn"><span>🌐</span> Converti in PDF</button>
+        <button class="btn-primary" id="html-btn"><span>🌐</span> ${FolioI18N.t('ap.html.btn')}</button>
       </div>
       <div class="tool-status" id="html-status"></div>`;
   }
@@ -1040,10 +1079,10 @@ Il testo verrà convertito in un PDF ben formattato.
       onFiles: (f) => { files = f; document.getElementById('merge-btn').disabled = files.length < 2; }
     });
     document.getElementById('merge-btn').addEventListener('click', async () => {
-      if (files.length < 2) return showStatus('merge-status', 'error', 'Seleziona almeno 2 file PDF.');
+      if (files.length < 2) return showStatus('merge-status', 'error', FolioI18N.t('ap.merge.errFew'));
       clearStatus('merge-status');
       const btn = document.getElementById('merge-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Unione in corso...';
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.merge.busy');
       try {
         const mergedPdf = await PDFDocument.create();
         for (const file of files) {
@@ -1054,12 +1093,12 @@ Il testo verrà convertito in un PDF ben formattato.
         }
         const pdfBytes = await mergedPdf.save();
         downloadPDF(pdfBytes, 'unito.pdf');
-        showStatus('merge-status', 'success', `✅ PDF unito con successo! (${files.length} file, ${mergedPdf.getPageCount()} pagine totali)
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="unito.pdf">📥 Scarica PDF unito</a>`);
+        showStatus('merge-status', 'success', `${FolioI18N.t('ap.merge.ok', { n: files.length, p: mergedPdf.getPageCount() })}
+          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="unito.pdf">${FolioI18N.t('ap.download')}</a>`);
       } catch (e) {
-        showStatus('merge-status', 'error', '❌ Errore durante l\'unione: ' + e.message);
+        showStatus('merge-status', 'error', FolioI18N.t('ap.merge.errRun') + e.message);
       }
-      btn.disabled = false; btn.innerHTML = '<span>⊞</span> Unisci PDF';
+      btn.disabled = false; btn.innerHTML = '<span>⊞</span> ' + FolioI18N.t('ap.merge.btn');
     });
   }    // --- SPLIT ---
   function initSplit() {
@@ -1076,10 +1115,10 @@ Il testo verrà convertito in un PDF ben formattato.
     });
 
     document.getElementById('split-btn').addEventListener('click', async () => {
-      if (!file) return showStatus('split-status', 'error', 'Carica un file PDF.');
+      if (!file) return showStatus('split-status', 'error', FolioI18N.t('ap.err.noFile'));
       clearStatus('split-status');
       const btn = document.getElementById('split-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Divisione in corso...';
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.split.busy');
       try {
         const bytes = await readFileAsBytes(file);
         const srcDoc = await PDFDocument.load(bytes);
@@ -1089,9 +1128,9 @@ Il testo verrà convertito in un PDF ben formattato.
 
         if (mode === 'range') {
           const range = document.getElementById('split-range').value;
-          if (!range) { btn.disabled = false; btn.innerHTML = '<span>⊟</span> Dividi PDF'; return showStatus('split-status', 'error', 'Inserisci un intervallo di pagine.'); }
+          if (!range) { btn.disabled = false; btn.innerHTML = '<span>⊟</span> ' + FolioI18N.t('ap.split.btn'); return showStatus('split-status', 'error', FolioI18N.t('ap.split.errRange')); }
           const pages = parsePageRange(range, total);
-          if (pages.length === 0) throw new Error('Nessuna pagina valida. Le pagine vanno da 1 a ' + total);
+          if (pages.length === 0) throw new Error(FolioI18N.t('ap.split.errNoPages', { n: total }));
           const partDoc = await PDFDocument.create();
           const pageRefs = await partDoc.copyPages(srcDoc, pages.map(p => p - 1));
           pageRefs.forEach(p => partDoc.addPage(p));
@@ -1113,11 +1152,11 @@ Il testo verrà convertito in un PDF ben formattato.
           const pdfBytes = await part.doc.save();
           downloadPDF(pdfBytes, part.name);
         }
-        showStatus('split-status', 'success', `✅ PDF diviso in ${parts.length} file!`);
+        showStatus('split-status', 'success', FolioI18N.t('ap.split.ok', { n: parts.length }));
       } catch (e) {
-        showStatus('split-status', 'error', '❌ Errore: ' + e.message);
+        showStatus('split-status', 'error', FolioI18N.t('ap.err.run') + e.message);
       }
-      btn.disabled = false; btn.innerHTML = '<span>⊟</span> Dividi PDF';
+      btn.disabled = false; btn.innerHTML = '<span>⊟</span> ' + FolioI18N.t('ap.split.btn');
     });
   }
 
@@ -1137,25 +1176,25 @@ Il testo verrà convertito in un PDF ben formattato.
       }
     });
     document.getElementById('remove-btn').addEventListener('click', async () => {
-      if (!file) return showStatus('remove-status', 'error', 'Carica un file PDF.');
+      if (!file) return showStatus('remove-status', 'error', FolioI18N.t('ap.err.noFile'));
       const input = document.getElementById('remove-pages-input').value;
-      if (!input) return showStatus('remove-status', 'error', 'Inserisci le pagine da rimuovere.');
+      if (!input) return showStatus('remove-status', 'error', FolioI18N.t('ap.remove.errInput'));
       clearStatus('remove-status');
       const btn = document.getElementById('remove-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Rimozione...';
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.remove.busy');
       try {
         const removePages = parsePageRange(input, totalPages);
-        if (removePages.length === 0) throw new Error('Nessuna pagina valida.');
+        if (removePages.length === 0) throw new Error(FolioI18N.t('ap.remove.errNoPages'));
         const bytes = await readFileAsBytes(file);
         const doc = await PDFDocument.load(bytes);
         const indices = removePages.map(p => p - 1).sort((a,b) => b - a);
         for (const idx of indices) doc.removePage(idx);
         const pdfBytes = await doc.save();
         downloadPDF(pdfBytes, `${getFileName(file)}_senza_pag_rimosse.pdf`);
-        showStatus('remove-status', 'success', `✅ Rimosse ${removePages.length} pagine. ${doc.getPageCount()} pagine rimanenti.
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_senza_pag_rimosse.pdf">📥 Scarica PDF</a>`);
-      } catch (e) { showStatus('remove-status', 'error', '❌ Errore: ' + e.message); }
-      btn.disabled = false; btn.innerHTML = '<span>−</span> Rimuovi pagine';
+        showStatus('remove-status', 'success', `${FolioI18N.t('ap.remove.ok', { n: removePages.length, p: doc.getPageCount() })}
+          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_senza_pag_rimosse.pdf">${FolioI18N.t('ap.download')}</a>`);
+      } catch (e) { showStatus('remove-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
+      btn.disabled = false; btn.innerHTML = '<span>−</span> ' + FolioI18N.t('ap.remove.btn');
     });
   }
 
@@ -1175,15 +1214,15 @@ Il testo verrà convertito in un PDF ben formattato.
       }
     });
     document.getElementById('extract-btn').addEventListener('click', async () => {
-      if (!file) return showStatus('extract-status', 'error', 'Carica un file PDF.');
+      if (!file) return showStatus('extract-status', 'error', FolioI18N.t('ap.err.noFile'));
       const input = document.getElementById('extract-pages-input').value;
-      if (!input) return showStatus('extract-status', 'error', 'Inserisci le pagine da estrarre.');
+      if (!input) return showStatus('extract-status', 'error', FolioI18N.t('ap.extract.errInput'));
       clearStatus('extract-status');
       const btn = document.getElementById('extract-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Estrazione...';
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.extract.busy');
       try {
         const extractPages = parsePageRange(input, totalPages);
-        if (extractPages.length === 0) throw new Error('Nessuna pagina valida.');
+        if (extractPages.length === 0) throw new Error(FolioI18N.t('ap.extract.errNoPages'));
         const bytes = await readFileAsBytes(file);
         const srcDoc = await PDFDocument.load(bytes);
         const newDoc = await PDFDocument.create();
@@ -1191,10 +1230,10 @@ Il testo verrà convertito in un PDF ben formattato.
         pageRefs.forEach(p => newDoc.addPage(p));
         const pdfBytes = await newDoc.save();
         downloadPDF(pdfBytes, `${getFileName(file)}_estratte.pdf`);
-        showStatus('extract-status', 'success', `✅ Estratte ${extractPages.length} pagine.
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_estratte.pdf">📥 Scarica PDF</a>`);
-      } catch (e) { showStatus('extract-status', 'error', '❌ Errore: ' + e.message); }
-      btn.disabled = false; btn.innerHTML = '<span>⤴</span> Estrai pagine';
+        showStatus('extract-status', 'success', `${FolioI18N.t('ap.extract.ok', { n: extractPages.length })}
+          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_estratte.pdf">${FolioI18N.t('ap.download')}</a>`);
+      } catch (e) { showStatus('extract-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
+      btn.disabled = false; btn.innerHTML = '<span>⤴</span> ' + FolioI18N.t('ap.extract.btn');
     });
   }
 
@@ -1224,13 +1263,13 @@ Il testo verrà convertito in un PDF ben formattato.
         div.innerHTML = `<span class="page-num">#${origIdx + 1}</span>`;
         if (pos > 0) {
           const up = document.createElement('button');
-          up.textContent = '↑'; up.className = 'page-btn'; up.title = 'Sposta su';
+          up.textContent = '↑'; up.className = 'page-btn'; up.title = FolioI18N.t('ap.reorder.up');
           up.addEventListener('click', () => { [pageOrder[pos-1], pageOrder[pos]] = [pageOrder[pos], pageOrder[pos-1]]; renderReorderList(); });
           div.appendChild(up);
         }
         if (pos < pageOrder.length - 1) {
           const down = document.createElement('button');
-          down.textContent = '↓'; down.className = 'page-btn'; down.title = 'Sposta giù';
+          down.textContent = '↓'; down.className = 'page-btn'; down.title = FolioI18N.t('ap.reorder.down');
           down.addEventListener('click', () => { [pageOrder[pos+1], pageOrder[pos]] = [pageOrder[pos], pageOrder[pos+1]]; renderReorderList(); });
           div.appendChild(down);
         }
@@ -1242,7 +1281,7 @@ Il testo verrà convertito in un PDF ben formattato.
       if (!file) return;
       clearStatus('reorder-status');
       const btn = document.getElementById('reorder-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Riordino...';
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.reorder.busy');
       try {
         const bytes = await readFileAsBytes(file);
         const srcDoc = await PDFDocument.load(bytes);
@@ -1251,10 +1290,10 @@ Il testo verrà convertito in un PDF ben formattato.
         pageRefs.forEach(p => newDoc.addPage(p));
         const pdfBytes = await newDoc.save();
         downloadPDF(pdfBytes, `${getFileName(file)}_riordinato.pdf`);
-        showStatus('reorder-status', 'success', `✅ Pagine riordinate.
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_riordinato.pdf">📥 Scarica PDF</a>`);
-      } catch (e) { showStatus('reorder-status', 'error', '❌ Errore: ' + e.message); }
-      btn.disabled = false; btn.innerHTML = '<span>↕</span> Applica ordine';
+        showStatus('reorder-status', 'success', `${FolioI18N.t('ap.reorder.ok')}
+          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_riordinato.pdf">${FolioI18N.t('ap.download')}</a>`);
+      } catch (e) { showStatus('reorder-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
+      btn.disabled = false; btn.innerHTML = '<span>↕</span> ' + FolioI18N.t('ap.reorder.btn');
     });
   }    // --- ROTATE ---
   function initRotate() {
@@ -1267,10 +1306,10 @@ Il testo verrà convertito in un PDF ben formattato.
       document.getElementById('rotate-range-group').style.display = document.getElementById('rotate-target').value === 'range' ? '' : 'none';
     });
     document.getElementById('rotate-btn').addEventListener('click', async () => {
-      if (!file) return showStatus('rotate-status', 'error', 'Carica un file PDF.');
+      if (!file) return showStatus('rotate-status', 'error', FolioI18N.t('ap.err.noFile'));
       clearStatus('rotate-status');
       const btn = document.getElementById('rotate-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Rotazione...';
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.rotate.busy');
       try {
         const angle = parseInt(document.getElementById('rotate-angle').value);
         const target = document.getElementById('rotate-target').value;
@@ -1286,10 +1325,10 @@ Il testo verrà convertito in un PDF ben formattato.
         }
         const pdfBytes = await doc.save();
         downloadPDF(pdfBytes, `${getFileName(file)}_ruotato.pdf`);
-        showStatus('rotate-status', 'success', `✅ PDF ruotato.
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_ruotato.pdf">📥 Scarica PDF</a>`);
-      } catch (e) { showStatus('rotate-status', 'error', '❌ Errore: ' + e.message); }
-      btn.disabled = false; btn.innerHTML = '<span>↻</span> Ruota PDF';
+        showStatus('rotate-status', 'success', `${FolioI18N.t('ap.rotate.ok')}
+          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_ruotato.pdf">${FolioI18N.t('ap.download')}</a>`);
+      } catch (e) { showStatus('rotate-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
+      btn.disabled = false; btn.innerHTML = '<span>↻</span> ' + FolioI18N.t('ap.rotate.btn');
     });
   }    // --- PAGE NUMBERS ---
   function initPageNumbers() {
@@ -1299,10 +1338,10 @@ Il testo verrà convertito in un PDF ben formattato.
       onFiles: (f) => { file = f[0]; document.getElementById('page-btn').disabled = false; document.getElementById('page-controls').style.display = ''; }
     });
     document.getElementById('page-btn').addEventListener('click', async () => {
-      if (!file) return showStatus('page-status', 'error', 'Carica un file PDF.');
+      if (!file) return showStatus('page-status', 'error', FolioI18N.t('ap.err.noFile'));
       clearStatus('page-status');
       const btn = document.getElementById('page-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Aggiunta numeri...';
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.pagenum.busy');
       try {
         const pos = document.getElementById('page-pos').value;
         const start = parseInt(document.getElementById('page-start').value) || 1;
@@ -1333,10 +1372,10 @@ Il testo verrà convertito in un PDF ben formattato.
         });
         const pdfBytes = await doc.save();
         downloadPDF(pdfBytes, `${getFileName(file)}_con_numeri.pdf`);
-        showStatus('page-status', 'success', `✅ Numeri di pagina aggiunti.
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_con_numeri.pdf">📥 Scarica PDF</a>`);
-      } catch (e) { showStatus('page-status', 'error', '❌ Errore: ' + e.message); }
-      btn.disabled = false; btn.innerHTML = '<span>#</span> Aggiungi numeri';
+        showStatus('page-status', 'success', `${FolioI18N.t('ap.pagenum.ok')}
+          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_con_numeri.pdf">${FolioI18N.t('ap.download')}</a>`);
+      } catch (e) { showStatus('page-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
+      btn.disabled = false; btn.innerHTML = '<span>#</span> ' + FolioI18N.t('ap.pagenum.btn');
     });
   }    // --- WATERMARK ---
   function initWatermark() {
@@ -1346,10 +1385,10 @@ Il testo verrà convertito in un PDF ben formattato.
       onFiles: (f) => { file = f[0]; document.getElementById('wm-btn').disabled = false; document.getElementById('wm-controls').style.display = ''; }
     });
     document.getElementById('wm-btn').addEventListener('click', async () => {
-      if (!file) return showStatus('wm-status', 'error', 'Carica un file PDF.');
+      if (!file) return showStatus('wm-status', 'error', FolioI18N.t('ap.err.noFile'));
       clearStatus('wm-status');
       const btn = document.getElementById('wm-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Applicazione filigrana...';
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.wm.busy');
       try {
         const text = document.getElementById('wm-text').value || 'BOZZA';
         const opacity = (parseInt(document.getElementById('wm-opacity').value) || 20) / 100;
@@ -1379,10 +1418,10 @@ Il testo verrà convertito in un PDF ben formattato.
         });
         const pdfBytes = await doc.save();
         downloadPDF(pdfBytes, `${getFileName(file)}_con_filigrana.pdf`);
-        showStatus('wm-status', 'success', `✅ Filigrana applicata.
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_con_filigrana.pdf">📥 Scarica PDF</a>`);
-      } catch (e) { showStatus('wm-status', 'error', '❌ Errore: ' + e.message); }
-      btn.disabled = false; btn.innerHTML = '<span>💧</span> Applica filigrana';
+        showStatus('wm-status', 'success', `${FolioI18N.t('ap.wm.ok')}
+          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_con_filigrana.pdf">${FolioI18N.t('ap.download')}</a>`);
+      } catch (e) { showStatus('wm-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
+      btn.disabled = false; btn.innerHTML = '<span>💧</span> ' + FolioI18N.t('ap.wm.btn');
     });
   }    // --- CROP ---
   function initCrop() {
@@ -1392,10 +1431,10 @@ Il testo verrà convertito in un PDF ben formattato.
       onFiles: (f) => { file = f[0]; document.getElementById('crop-btn').disabled = false; document.getElementById('crop-controls').style.display = ''; }
     });
     document.getElementById('crop-btn').addEventListener('click', async () => {
-      if (!file) return showStatus('crop-status', 'error', 'Carica un file PDF.');
+      if (!file) return showStatus('crop-status', 'error', FolioI18N.t('ap.err.noFile'));
       clearStatus('crop-status');
       const btn = document.getElementById('crop-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Ritaglio...';
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.crop.busy');
       try {
         const left = parseInt(document.getElementById('crop-left').value) || 0;
         const right = parseInt(document.getElementById('crop-right').value) || 0;
@@ -1414,10 +1453,10 @@ Il testo verrà convertito in un PDF ben formattato.
         });
         const pdfBytes = await doc.save();
         downloadPDF(pdfBytes, `${getFileName(file)}_ritagliato.pdf`);
-        showStatus('crop-status', 'success', `✅ PDF ritagliato.
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_ritagliato.pdf">📥 Scarica PDF</a>`);
-      } catch (e) { showStatus('crop-status', 'error', '❌ Errore: ' + e.message); }
-      btn.disabled = false; btn.innerHTML = '<span>✂</span> Ritaglia PDF';
+        showStatus('crop-status', 'success', `${FolioI18N.t('ap.crop.ok')}
+          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_ritagliato.pdf">${FolioI18N.t('ap.download')}</a>`);
+      } catch (e) { showStatus('crop-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
+      btn.disabled = false; btn.innerHTML = '<span>✂</span> ' + FolioI18N.t('ap.crop.btn');
     });
   }    // --- EDIT TEXT ---
   function initEditText() {
@@ -1427,12 +1466,12 @@ Il testo verrà convertito in un PDF ben formattato.
       onFiles: (f) => { file = f[0]; document.getElementById('edit-btn').disabled = false; document.getElementById('edit-controls').style.display = ''; }
     });
     document.getElementById('edit-btn').addEventListener('click', async () => {
-      if (!file) return showStatus('edit-status', 'error', 'Carica un file PDF.');
+      if (!file) return showStatus('edit-status', 'error', FolioI18N.t('ap.err.noFile'));
       const text = document.getElementById('edit-text').value;
-      if (!text) return showStatus('edit-status', 'error', 'Inserisci il testo da aggiungere.');
+      if (!text) return showStatus('edit-status', 'error', FolioI18N.t('ap.edittext.errText'));
       clearStatus('edit-status');
       const btn = document.getElementById('edit-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Aggiunta testo...';
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.edittext.busy');
       try {
         const x = parseInt(document.getElementById('edit-x').value) || 50;
         const y = parseInt(document.getElementById('edit-y').value) || 50;
@@ -1454,10 +1493,10 @@ Il testo verrà convertito in un PDF ben formattato.
         });
         const pdfBytes = await doc.save();
         downloadPDF(pdfBytes, `${getFileName(file)}_con_testo.pdf`);
-        showStatus('edit-status', 'success', `✅ Testo aggiunto a ${pages.length} pagine.
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_con_testo.pdf">📥 Scarica PDF</a>`);
-      } catch (e) { showStatus('edit-status', 'error', '❌ Errore: ' + e.message); }
-      btn.disabled = false; btn.innerHTML = '<span>✎</span> Aggiungi testo';
+        showStatus('edit-status', 'success', `${FolioI18N.t('ap.edittext.ok', { n: pages.length })}
+          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_con_testo.pdf">${FolioI18N.t('ap.download')}</a>`);
+      } catch (e) { showStatus('edit-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
+      btn.disabled = false; btn.innerHTML = '<span>✎</span> ' + FolioI18N.t('ap.edittext.btn');
     });
   }    // --- UNLOCK ---
   function initUnlock() {
@@ -1467,22 +1506,22 @@ Il testo verrà convertito in un PDF ben formattato.
       onFiles: (f) => { file = f[0]; document.getElementById('unlock-btn').disabled = false; document.getElementById('unlock-controls').style.display = ''; }
     });
     document.getElementById('unlock-btn').addEventListener('click', async () => {
-      if (!file) return showStatus('unlock-status', 'error', 'Carica un file PDF.');
+      if (!file) return showStatus('unlock-status', 'error', FolioI18N.t('ap.err.noFile'));
       const password = document.getElementById('unlock-password').value;
       clearStatus('unlock-status');
       const btn = document.getElementById('unlock-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Sblocco...';
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.unlock.busy');
       try {
         const bytes = await readFileAsBytes(file);
         const doc = await PDFDocument.load(bytes, { password });
         const pdfBytes = await doc.save();
         downloadPDF(pdfBytes, `${getFileName(file)}_sbloccato.pdf`);
-        showStatus('unlock-status', 'success', `✅ PDF sbloccato.
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_sbloccato.pdf">📥 Scarica PDF</a>`);
+        showStatus('unlock-status', 'success', `${FolioI18N.t('ap.unlock.ok')}
+          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_sbloccato.pdf">${FolioI18N.t('ap.download')}</a>`);
       } catch (e) {
-        showStatus('unlock-status', 'error', '❌ Errore: password errata o PDF non protetto.');
+        showStatus('unlock-status', 'error', FolioI18N.t('ap.unlock.errBad'));
       }
-      btn.disabled = false; btn.innerHTML = '<span>🔓</span> Sblocca PDF';
+      btn.disabled = false; btn.innerHTML = '<span>🔓</span> ' + FolioI18N.t('ap.unlock.btn');
     });
   }    // --- PROTECT ---
   function initProtect() {
@@ -1492,13 +1531,13 @@ Il testo verrà convertito in un PDF ben formattato.
       onFiles: (f) => { file = f[0]; document.getElementById('protect-btn').disabled = false; document.getElementById('protect-controls').style.display = ''; }
     });
     document.getElementById('protect-btn').addEventListener('click', async () => {
-      if (!file) return showStatus('protect-status', 'error', 'Carica un file PDF.');
+      if (!file) return showStatus('protect-status', 'error', FolioI18N.t('ap.err.noFile'));
       const userPw = document.getElementById('protect-user-pw').value;
       const ownerPw = document.getElementById('protect-owner-pw').value;
-      if (!userPw && !ownerPw) return showStatus('protect-status', 'error', 'Inserisci almeno una password.');
+      if (!userPw && !ownerPw) return showStatus('protect-status', 'error', FolioI18N.t('ap.protect.errPw'));
       clearStatus('protect-status');
       const btn = document.getElementById('protect-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Protezione...';
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.protect.busy');
       try {
         const bytes = await readFileAsBytes(file);
         const doc = await PDFDocument.load(bytes);
@@ -1507,10 +1546,10 @@ Il testo verrà convertito in un PDF ben formattato.
           ownerPassword: ownerPw || undefined,
         });
         downloadPDF(pdfBytes, `${getFileName(file)}_protetto.pdf`);
-        showStatus('protect-status', 'success', `✅ PDF protetto con password.
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_protetto.pdf">📥 Scarica PDF protetto</a>`);
-      } catch (e) { showStatus('protect-status', 'error', '❌ Errore: ' + e.message); }
-      btn.disabled = false; btn.innerHTML = '<span>🔐</span> Proteggi PDF';
+        showStatus('protect-status', 'success', `${FolioI18N.t('ap.protect.ok')}
+          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_protetto.pdf">${FolioI18N.t('ap.download')}</a>`);
+      } catch (e) { showStatus('protect-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
+      btn.disabled = false; btn.innerHTML = '<span>🔐</span> ' + FolioI18N.t('ap.protect.btn');
     });
   }    // --- JPG TO PDF ---
   function initJpgToPdf() {
@@ -1520,10 +1559,10 @@ Il testo verrà convertito in un PDF ben formattato.
       onFiles: (f) => { files = f; document.getElementById('jpg-btn').disabled = files.length === 0; document.getElementById('jpg-controls').style.display = ''; }
     });
     document.getElementById('jpg-btn').addEventListener('click', async () => {
-      if (files.length === 0) return showStatus('jpg-status', 'error', 'Carica almeno un\'immagine.');
+      if (files.length === 0) return showStatus('jpg-status', 'error', FolioI18N.t('ap.jpg.errNone'));
       clearStatus('jpg-status');
       const btn = document.getElementById('jpg-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creazione PDF...';
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.jpg.busy');
       try {
         const orientation = document.getElementById('jpg-orientation').value;
         const format = document.getElementById('jpg-format').value;
@@ -1537,8 +1576,8 @@ Il testo verrà convertito in un PDF ben formattato.
           let img;
       if (file.type === 'image/png' || file.name.match(/\.png$/i)) img = await doc.embedPng(imgBytes);
       else if (file.type === 'image/webp' || file.name.match(/\.webp$/i)) {
-        btn.disabled = false; btn.innerHTML = '<span>🖼</span> Crea PDF';
-        showStatus('jpg-status', 'error', 'Il formato WebP non è supportato. Converti l\'immagine in JPG o PNG prima di caricarla.');
+        btn.disabled = false; btn.innerHTML = '<span>🖼</span> ' + FolioI18N.t('ap.jpg.btn');
+        showStatus('jpg-status', 'error', FolioI18N.t('ap.jpg.errWebp'));
         return;
       }
       else img = await doc.embedJpg(imgBytes);
@@ -1552,10 +1591,10 @@ Il testo verrà convertito in un PDF ben formattato.
         }
         const pdfBytes = await doc.save();
         downloadPDF(pdfBytes, 'immagini.pdf');
-        showStatus('jpg-status', 'success', `✅ PDF creato da ${files.length} immagine/i.
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="immagini.pdf">📥 Scarica PDF</a>`);
-      } catch (e) { showStatus('jpg-status', 'error', '❌ Errore: ' + e.message); }
-      btn.disabled = false; btn.innerHTML = '<span>🖼</span> Crea PDF';
+        showStatus('jpg-status', 'success', `${FolioI18N.t('ap.jpg.ok', { n: files.length })}
+          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="immagini.pdf">${FolioI18N.t('ap.download')}</a>`);
+      } catch (e) { showStatus('jpg-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
+      btn.disabled = false; btn.innerHTML = '<span>🖼</span> ' + FolioI18N.t('ap.jpg.btn');
     });
   }
 
@@ -1563,12 +1602,12 @@ Il testo verrà convertito in un PDF ben formattato.
   function initHtmlToPdf() {
     document.getElementById('html-btn').addEventListener('click', async () => {
       const html = document.getElementById('html-input').value;
-      if (!html) return showStatus('html-status', 'error', 'Inserisci del testo o HTML.');
+      if (!html) return showStatus('html-status', 'error', FolioI18N.t('ap.html.errEmpty'));
       clearStatus('html-status');
       const btn = document.getElementById('html-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Conversione...';
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.html.busy');
       try {
-        const title = document.getElementById('html-title').value || 'Documento';
+        const title = document.getElementById('html-title').value || FolioI18N.t('ap.html.titleDefault');
         const doc = await PDFDocument.create();
         const font = await doc.embedFont(StandardFonts.Helvetica);
         const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -1607,10 +1646,10 @@ Il testo verrà convertito in un PDF ben formattato.
 
         const pdfBytes = await doc.save();
         downloadPDF(pdfBytes, `${title.toLowerCase().replace(/\s+/g,'_')}.pdf`);
-        showStatus('html-status', 'success', `✅ PDF creato dal testo.
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${title.toLowerCase().replace(/\s+/g,'_')}.pdf">📥 Scarica PDF</a>`);
-      } catch (e) { showStatus('html-status', 'error', '❌ Errore: ' + e.message); }
-      btn.disabled = false; btn.innerHTML = '<span>🌐</span> Converti in PDF';
+        showStatus('html-status', 'success', `${FolioI18N.t('ap.html.ok')}
+          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${title.toLowerCase().replace(/\s+/g,'_')}.pdf">${FolioI18N.t('ap.download')}</a>`);
+      } catch (e) { showStatus('html-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
+      btn.disabled = false; btn.innerHTML = '<span>🌐</span> ' + FolioI18N.t('ap.html.btn');
     });
   }
 
@@ -1622,12 +1661,14 @@ Il testo verrà convertito in un PDF ben formattato.
   }
 
   // ===== INIT =====
-  function init() {
+  function init(preferredToolId) {
     buildSidebar();
     buildToolSections();
 
-    // Select first tool
-    const firstItem = document.querySelector('.sidebar-item');
+    // Select the requested tool, otherwise the first one
+    const firstItem = preferredToolId
+      ? document.querySelector('.sidebar-item[data-tool="' + preferredToolId + '"]')
+      : document.querySelector('.sidebar-item');
     if (firstItem) { firstItem.classList.add('active'); showTool(firstItem.dataset.tool); }
 
     if (!hasPDFLib) {
@@ -1635,9 +1676,8 @@ Il testo verrà convertito in un PDF ben formattato.
       const first = document.querySelector('.tool-section');
       if (first) {
         first.innerHTML = `<div class="placeholder-card">
-          <div class="pl-icon">⚠️</div>
-          <h3>Impossibile avviare l'editor</h3>
-          <p>La libreria PDF non è stata caricata. Ricarica la pagina o controlla che il file <code>vendor/pdf-lib.min.js</code> sia presente accanto a questa pagina.</p>
+          <h3>${FolioI18N.t('ap.fatal.title')}</h3>
+          <p>${FolioI18N.t('ap.fatal.body')}</p>
         </div>`;
       }
       return;
@@ -1661,6 +1701,47 @@ Il testo verrà convertito in un PDF ben formattato.
   }
 
   document.addEventListener('DOMContentLoaded', init);
+
+  // === Language switch (EN / IT) ===
+  function applyLanguage(lang) {
+    document.documentElement.lang = lang;
+    const titleKey = document.body.getAttribute('data-title-key');
+    if (titleKey) document.title = FolioI18N.t(titleKey);
+
+    // Static chrome (topbar labels / aria)
+    const txtEls = document.querySelectorAll('[data-i18n]');
+    for (let i = 0; i < txtEls.length; i++) {
+      txtEls[i].textContent = FolioI18N.t(txtEls[i].getAttribute('data-i18n'));
+    }
+    const ariaEls = document.querySelectorAll('[data-i18n-aria]');
+    for (let a = 0; a < ariaEls.length; a++) {
+      ariaEls[a].setAttribute('aria-label', FolioI18N.t(ariaEls[a].getAttribute('data-i18n-aria')));
+    }
+
+    const btns = document.querySelectorAll('.lang-btn');
+    for (let b = 0; b < btns.length; b++) {
+      const on = btns[b].getAttribute('data-lang') === lang;
+      btns[b].classList.toggle('active', on);
+      btns[b].setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+
+    // Rebuild the JS-generated UI in the new language and keep the
+    // currently selected tool open (a fresh page load picks the default).
+    const activeItem = document.querySelector('.sidebar-item.active');
+    const keep = activeItem ? activeItem.dataset.tool : null;
+    init(keep);
+  }
+
+  const langBtns = document.querySelectorAll('.lang-btn');
+  for (let lb = 0; lb < langBtns.length; lb++) {
+    langBtns[lb].addEventListener('click', function () {
+      FolioI18N.set(this.getAttribute('data-lang'));
+      applyLanguage(FolioI18N.current());
+    });
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    applyLanguage(FolioI18N.current());
+  });
   </script>
 </body>
 </html>
