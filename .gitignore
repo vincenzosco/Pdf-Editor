@@ -1,0 +1,5 @@
+# Freebuff local app state (never commit/push)
+.freebuff/
+
+# OS noise
+.DS_Store
