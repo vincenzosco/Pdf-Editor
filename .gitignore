@@ -3,3 +3,18 @@
 
 # OS noise
 .DS_Store
+
+# Bug Hunter scan artifacts (never commit/push)
+.bug-hunter/
+
+# Node
+node_modules/
+npm-debug.log*
+.npm/
+
+# Local environment / runtime
+.env
+*.log
+
+# tesseract.js language data (downloaded at runtime)
+*.traineddata

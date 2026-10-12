@@ -124,6 +124,12 @@
     'ap.t.compare.desc': 'Compare two PDF documents and show the differences.',
 
     'ap.soon.title': 'Coming soon',
+    'ap.server.run': 'Run',
+    'ap.server.busy': 'Processing\u2026',
+    'ap.server.needFile': 'Upload the required file(s) first.',
+    'ap.server.offline': 'Server tools need the Folio server. Start it with "npm start" and open this page from it.',
+    'ap.server.unavailable': 'Not available on this server:',
+    'ap.server.ok': 'Done.',
     'ap.soon.body': 'This feature requires server-side processing. We\u2019re working on making it available as soon as possible. In the meantime, you can try the other PDF tools that already work.',
     'ap.upload.dropSingle': 'Drop your file here or',
     'ap.upload.dropMulti': 'Drop your files here or',
@@ -171,7 +177,7 @@
 
     'ap.reorder.btn': 'Apply order',
     'ap.reorder.busy': 'Reordering\u2026',
-    'ap.reorder.hint': 'Drag the pages to reorder them:',
+    'ap.reorder.hint': 'Use the arrow buttons to reorder the pages:',
     'ap.reorder.up': 'Move up',
     'ap.reorder.down': 'Move down',
     'ap.reorder.ok': 'Pages reordered.',
@@ -399,6 +405,12 @@
     'ap.t.compare.desc': 'Confronta due documenti PDF e mostra le differenze.',
 
     'ap.soon.title': 'Presto disponibile',
+    'ap.server.run': 'Esegui',
+    'ap.server.busy': 'Elaborazione\u2026',
+    'ap.server.needFile': 'Carica prima i file richiesti.',
+    'ap.server.offline': 'Le funzioni server richiedono il server Folio. Avvialo con "npm start" e apri questa pagina da l\u00ec.',
+    'ap.server.unavailable': 'Non disponibile su questo server:',
+    'ap.server.ok': 'Fatto.',
     'ap.soon.body': 'Questa funzione richiede l\u2019elaborazione lato server. Stiamo lavorando per renderla disponibile al più presto. Per ora, puoi provare gli altri strumenti di modifica PDF già funzionanti.',
     'ap.upload.dropSingle': 'Trascina il file qui o',
     'ap.upload.dropMulti': 'Trascina i file qui o',
@@ -446,7 +458,7 @@
 
     'ap.reorder.btn': 'Applica ordine',
     'ap.reorder.busy': 'Riordino\u2026',
-    'ap.reorder.hint': 'Trascina le pagine per riordinarle:',
+    'ap.reorder.hint': 'Usa le frecce per riordinare le pagine:',
     'ap.reorder.up': 'Sposta su',
     'ap.reorder.down': 'Sposta giù',
     'ap.reorder.ok': 'Pagine riordinate.',
@@ -587,19 +599,26 @@
     } catch (e) { /* ignore */ }
   }
 
+  // Current language, kept in memory so a switch works even when storage is
+  // unavailable (private mode, cookies disabled, some file:// contexts).
+  var currentLang = null;
+
   function detect() {
+    if (currentLang) return currentLang;
     var fromUrl = langFromUrl();
-    if (fromUrl) return fromUrl;
+    if (fromUrl) { currentLang = fromUrl; return fromUrl; }
     try {
       var stored = global.localStorage.getItem(STORE_KEY);
-      if (stored === 'en' || stored === 'it') return stored;
+      if (stored === 'en' || stored === 'it') { currentLang = stored; return stored; }
     } catch (e) { /* storage unavailable */ }
     var nav = (global.navigator && global.navigator.language || 'en').toLowerCase();
-    return nav.indexOf('it') === 0 ? 'it' : 'en';
+    currentLang = nav.indexOf('it') === 0 ? 'it' : 'en';
+    return currentLang;
   }
 
   function setLang(lang) {
     if (lang !== 'en' && lang !== 'it') lang = 'en';
+    currentLang = lang;
     try { global.localStorage.setItem(STORE_KEY, lang); } catch (e) { /* ignore */ }
   }
 

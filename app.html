@@ -435,7 +435,7 @@
 <body data-title-key="ap.page.title">
   <!-- TOP BAR -->
   <header class="topbar">
-    <a href="/" class="logo" aria-label="Folio home" data-i18n-aria="ap.logo.aria"><span class="logo-mark"></span>Folio</a>
+    <a href="index.html" class="logo" aria-label="Folio home" data-i18n-aria="ap.logo.aria"><span class="logo-mark"></span>Folio</a>
     <span class="topbar-title" data-i18n="ap.top.title">PDF Editor</span>
     <div class="lang-switch" role="group" aria-label="Language">
       <button type="button" class="lang-btn" data-lang="en" aria-pressed="false">EN</button>
@@ -457,6 +457,7 @@
   </div>
 
   <script src="i18n.js"></script>
+  <script src="server-tools.js"></script>
   <script>
   // pdf-lib is vendored locally (vendor/pdf-lib.min.js). Guard anyway so a
   // blocked/missing script never blanks the whole app.
@@ -521,8 +522,8 @@
     {
       name: FolioI18N.t('ap.cat.protect'), icon: '🔒',
       tools: [
-        { id: 'unlock', label: FolioI18N.t('ap.t.unlock.label'), icon: '🔓', desc: FolioI18N.t('ap.t.unlock.desc'), type: 'working' },
-        { id: 'protect', label: FolioI18N.t('ap.t.protect.label'), icon: '🔐', desc: FolioI18N.t('ap.t.protect.desc'), type: 'working' },
+        { id: 'unlock', label: FolioI18N.t('ap.t.unlock.label'), icon: '🔓', desc: FolioI18N.t('ap.t.unlock.desc'), type: 'server' },
+        { id: 'protect', label: FolioI18N.t('ap.t.protect.label'), icon: '🔐', desc: FolioI18N.t('ap.t.protect.desc'), type: 'server' },
         { id: 'sign', label: FolioI18N.t('ap.t.sign.label'), icon: '✍', desc: FolioI18N.t('ap.t.sign.desc'), type: 'server' },
         { id: 'redact', label: FolioI18N.t('ap.t.redact.label'), icon: '⬛', desc: FolioI18N.t('ap.t.redact.desc'), type: 'server' },
         { id: 'compare', label: FolioI18N.t('ap.t.compare.label'), icon: '⇔', desc: FolioI18N.t('ap.t.compare.desc'), type: 'server' },
@@ -587,12 +588,7 @@
   }
 
   function buildToolContent(tool) {
-    if (tool.type === 'server') {
-      return `<div class="placeholder-card">
-        <h3>${FolioI18N.t('ap.soon.title')}</h3>
-        <p>${FolioI18N.t('ap.soon.body')}</p>
-      </div>`;
-    }
+    if (tool.type === 'server') return FolioServerTools.ui(tool);
     switch (tool.id) {
       case 'merge': return mergeUI();
       case 'split': return splitUI();
@@ -604,8 +600,6 @@
       case 'watermark': return watermarkUI();
       case 'crop': return cropUI();
       case 'edit-text': return editTextUI();
-      case 'unlock': return unlockUI();
-      case 'protect': return protectUI();
       case 'jpg-to-pdf': return jpgToPdfUI();
       case 'html-to-pdf': return htmlToPdfUI();
       default: return '';
@@ -630,26 +624,35 @@
     const zone = document.getElementById(zoneId);
     const list = document.getElementById(listId);
 
-    function handleFiles(files) {
+    // Currently selected files. Kept in sync with the list so that removing
+    // a row also removes the file from the operation, not just from the DOM.
+    let selected = [];
+
+    function renderList() {
       list.innerHTML = '';
-      const items = [];
-      for (const file of files) {
-        items.push(file);
+      selected.forEach((file, index) => {
         const div = document.createElement('div');
         div.className = 'file-item';
         div.innerHTML = `<div class="file-info"><span class="file-icon">📄</span>
           <span class="file-name">${file.name}</span>
           <span class="file-size">${(file.size / 1024).toFixed(1)} KB</span></div>
-          <button class="file-remove" data-name="${file.name}">✕</button>`;
+          <button class="file-remove" data-index="${index}">✕</button>`;
         list.appendChild(div);
-      }
-      if (onFiles) onFiles(items);
+      });
       // Remove handler
       list.querySelectorAll('.file-remove').forEach(btn => {
         btn.addEventListener('click', () => {
-          btn.closest('.file-item').remove();
+          selected.splice(parseInt(btn.getAttribute('data-index'), 10), 1);
+          if (onFiles) onFiles(selected);
+          renderList();
         });
       });
+    }
+
+    function handleFiles(files) {
+      selected = Array.from(files);
+      if (onFiles) onFiles(selected);
+      renderList();
     }
 
     input.addEventListener('change', () => handleFiles(Array.from(input.files)));
@@ -948,44 +951,6 @@
       <div class="tool-status" id="edit-status"></div>`;
   }
 
-  function unlockUI() {
-    return `
-      ${fileUploadHTML({ id: 'unlock-input', label: FolioI18N.t('ap.upload.btnProtected') })}
-      <div class="tool-controls" id="unlock-controls" style="display:none;">
-        <div class="control-row">
-          <div class="control-group">
-            <label>${FolioI18N.t('ap.unlock.pwLabel')}</label>
-            <input type="password" id="unlock-password" placeholder="${FolioI18N.t('ap.unlock.pwPlaceholder')}" />
-          </div>
-        </div>
-      </div>
-      <div class="tool-actions">
-        <button class="btn-primary" id="unlock-btn" disabled><span>🔓</span> ${FolioI18N.t('ap.unlock.btn')}</button>
-      </div>
-      <div class="tool-status" id="unlock-status"></div>`;
-  }
-
-  function protectUI() {
-    return `
-      ${fileUploadHTML({ id: 'protect-input', label: FolioI18N.t('ap.upload.btnPdf') })}
-      <div class="tool-controls" id="protect-controls" style="display:none;">
-        <div class="control-row">
-          <div class="control-group">
-            <label>${FolioI18N.t('ap.protect.userLabel')}</label>
-            <input type="password" id="protect-user-pw" placeholder="${FolioI18N.t('ap.protect.userPlaceholder')}" />
-          </div>
-          <div class="control-group">
-            <label>${FolioI18N.t('ap.protect.ownerLabel')}</label>
-            <input type="password" id="protect-owner-pw" placeholder="${FolioI18N.t('ap.protect.ownerPlaceholder')}" />
-          </div>
-        </div>
-      </div>
-      <div class="tool-actions">
-        <button class="btn-primary" id="protect-btn" disabled><span>🔐</span> ${FolioI18N.t('ap.protect.btn')}</button>
-      </div>
-      <div class="tool-status" id="protect-status"></div>`;
-  }
-
   function jpgToPdfUI() {
     return `
       ${fileUploadHTML({ id: 'jpg-input', label: FolioI18N.t('ap.upload.btnImages'), accept: '.jpg,.jpeg,.png,.webp', multi: true, icon: '🖼️' })}
@@ -1072,6 +1037,14 @@
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   }
 
+  // Build the object URL for the "Download" links shown in status messages
+  // and revoke it later, so repeated operations do not leak blob memory.
+  function objectUrl(bytes) {
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    return url;
+  }
+
   // --- MERGE ---
   function initMerge() {
     let files = [];
@@ -1093,9 +1066,9 @@
           pages.forEach(p => mergedPdf.addPage(p));
         }
         const pdfBytes = await mergedPdf.save();
-        downloadPDF(pdfBytes, 'unito.pdf');
+        downloadPDF(pdfBytes, 'merged.pdf');
         showStatus('merge-status', 'success', `${FolioI18N.t('ap.merge.ok', { n: files.length, p: mergedPdf.getPageCount() })}
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="unito.pdf">${FolioI18N.t('ap.download')}</a>`);
+          <br/><a class="download-link" href="${objectUrl(pdfBytes)}" download="merged.pdf">${FolioI18N.t('ap.download')}</a>`);
       } catch (e) {
         showStatus('merge-status', 'error', FolioI18N.t('ap.merge.errRun') + e.message);
       }
@@ -1135,7 +1108,7 @@
           const partDoc = await PDFDocument.create();
           const pageRefs = await partDoc.copyPages(srcDoc, pages.map(p => p - 1));
           pageRefs.forEach(p => partDoc.addPage(p));
-          parts.push({ doc: partDoc, name: `${getFileName(file)}_pagine_${pages[0]}-${pages[pages.length-1]}.pdf` });
+          parts.push({ doc: partDoc, name: `${getFileName(file)}_pages_${pages[0]}-${pages[pages.length-1]}.pdf` });
         } else {
           const every = parseInt(document.getElementById('split-every').value) || 2;
           for (let start = 0; start < total; start += every) {
@@ -1145,7 +1118,7 @@
             for (let i = start; i < end; i++) pages.push(i);
             const pageRefs = await partDoc.copyPages(srcDoc, pages);
             pageRefs.forEach(p => partDoc.addPage(p));
-            parts.push({ doc: partDoc, name: `${getFileName(file)}_parte_${Math.floor(start/every)+1}.pdf` });
+            parts.push({ doc: partDoc, name: `${getFileName(file)}_part_${Math.floor(start/every)+1}.pdf` });
           }
         }
 
@@ -1191,9 +1164,9 @@
         const indices = removePages.map(p => p - 1).sort((a,b) => b - a);
         for (const idx of indices) doc.removePage(idx);
         const pdfBytes = await doc.save();
-        downloadPDF(pdfBytes, `${getFileName(file)}_senza_pag_rimosse.pdf`);
+        downloadPDF(pdfBytes, `${getFileName(file)}_pages-removed.pdf`);
         showStatus('remove-status', 'success', `${FolioI18N.t('ap.remove.ok', { n: removePages.length, p: doc.getPageCount() })}
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_senza_pag_rimosse.pdf">${FolioI18N.t('ap.download')}</a>`);
+          <br/><a class="download-link" href="${objectUrl(pdfBytes)}" download="${getFileName(file)}_pages-removed.pdf">${FolioI18N.t('ap.download')}</a>`);
       } catch (e) { showStatus('remove-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
       btn.disabled = false; btn.innerHTML = '<span>−</span> ' + FolioI18N.t('ap.remove.btn');
     });
@@ -1230,9 +1203,9 @@
         const pageRefs = await newDoc.copyPages(srcDoc, extractPages.map(p => p - 1));
         pageRefs.forEach(p => newDoc.addPage(p));
         const pdfBytes = await newDoc.save();
-        downloadPDF(pdfBytes, `${getFileName(file)}_estratte.pdf`);
+        downloadPDF(pdfBytes, `${getFileName(file)}_extracted.pdf`);
         showStatus('extract-status', 'success', `${FolioI18N.t('ap.extract.ok', { n: extractPages.length })}
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_estratte.pdf">${FolioI18N.t('ap.download')}</a>`);
+          <br/><a class="download-link" href="${objectUrl(pdfBytes)}" download="${getFileName(file)}_extracted.pdf">${FolioI18N.t('ap.download')}</a>`);
       } catch (e) { showStatus('extract-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
       btn.disabled = false; btn.innerHTML = '<span>⤴</span> ' + FolioI18N.t('ap.extract.btn');
     });
@@ -1290,9 +1263,9 @@
         const pageRefs = await newDoc.copyPages(srcDoc, pageOrder);
         pageRefs.forEach(p => newDoc.addPage(p));
         const pdfBytes = await newDoc.save();
-        downloadPDF(pdfBytes, `${getFileName(file)}_riordinato.pdf`);
+        downloadPDF(pdfBytes, `${getFileName(file)}_reordered.pdf`);
         showStatus('reorder-status', 'success', `${FolioI18N.t('ap.reorder.ok')}
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_riordinato.pdf">${FolioI18N.t('ap.download')}</a>`);
+          <br/><a class="download-link" href="${objectUrl(pdfBytes)}" download="${getFileName(file)}_reordered.pdf">${FolioI18N.t('ap.download')}</a>`);
       } catch (e) { showStatus('reorder-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
       btn.disabled = false; btn.innerHTML = '<span>↕</span> ' + FolioI18N.t('ap.reorder.btn');
     });
@@ -1325,9 +1298,9 @@
           indices.forEach(i => pages[i].setRotation(degrees(pages[i].getRotation().angle + angle)));
         }
         const pdfBytes = await doc.save();
-        downloadPDF(pdfBytes, `${getFileName(file)}_ruotato.pdf`);
+        downloadPDF(pdfBytes, `${getFileName(file)}_rotated.pdf`);
         showStatus('rotate-status', 'success', `${FolioI18N.t('ap.rotate.ok')}
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_ruotato.pdf">${FolioI18N.t('ap.download')}</a>`);
+          <br/><a class="download-link" href="${objectUrl(pdfBytes)}" download="${getFileName(file)}_rotated.pdf">${FolioI18N.t('ap.download')}</a>`);
       } catch (e) { showStatus('rotate-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
       btn.disabled = false; btn.innerHTML = '<span>↻</span> ' + FolioI18N.t('ap.rotate.btn');
     });
@@ -1372,9 +1345,9 @@
           page.drawText(num, { x, y, font, size: 10, color: rgb(0.2, 0.2, 0.2) });
         });
         const pdfBytes = await doc.save();
-        downloadPDF(pdfBytes, `${getFileName(file)}_con_numeri.pdf`);
+        downloadPDF(pdfBytes, `${getFileName(file)}_with-page-numbers.pdf`);
         showStatus('page-status', 'success', `${FolioI18N.t('ap.pagenum.ok')}
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_con_numeri.pdf">${FolioI18N.t('ap.download')}</a>`);
+          <br/><a class="download-link" href="${objectUrl(pdfBytes)}" download="${getFileName(file)}_with-page-numbers.pdf">${FolioI18N.t('ap.download')}</a>`);
       } catch (e) { showStatus('page-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
       btn.disabled = false; btn.innerHTML = '<span>#</span> ' + FolioI18N.t('ap.pagenum.btn');
     });
@@ -1418,9 +1391,9 @@
           });
         });
         const pdfBytes = await doc.save();
-        downloadPDF(pdfBytes, `${getFileName(file)}_con_filigrana.pdf`);
+        downloadPDF(pdfBytes, `${getFileName(file)}_watermarked.pdf`);
         showStatus('wm-status', 'success', `${FolioI18N.t('ap.wm.ok')}
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_con_filigrana.pdf">${FolioI18N.t('ap.download')}</a>`);
+          <br/><a class="download-link" href="${objectUrl(pdfBytes)}" download="${getFileName(file)}_watermarked.pdf">${FolioI18N.t('ap.download')}</a>`);
       } catch (e) { showStatus('wm-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
       btn.disabled = false; btn.innerHTML = '<span>💧</span> ' + FolioI18N.t('ap.wm.btn');
     });
@@ -1453,9 +1426,9 @@
           page.setMediaBox(l, b, width - l - r, height - t - b);
         });
         const pdfBytes = await doc.save();
-        downloadPDF(pdfBytes, `${getFileName(file)}_ritagliato.pdf`);
+        downloadPDF(pdfBytes, `${getFileName(file)}_cropped.pdf`);
         showStatus('crop-status', 'success', `${FolioI18N.t('ap.crop.ok')}
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_ritagliato.pdf">${FolioI18N.t('ap.download')}</a>`);
+          <br/><a class="download-link" href="${objectUrl(pdfBytes)}" download="${getFileName(file)}_cropped.pdf">${FolioI18N.t('ap.download')}</a>`);
       } catch (e) { showStatus('crop-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
       btn.disabled = false; btn.innerHTML = '<span>✂</span> ' + FolioI18N.t('ap.crop.btn');
     });
@@ -1493,64 +1466,11 @@
           page.drawText(text, { x, y: adjustedY, font, size, color: rgb(r,g,b) });
         });
         const pdfBytes = await doc.save();
-        downloadPDF(pdfBytes, `${getFileName(file)}_con_testo.pdf`);
+        downloadPDF(pdfBytes, `${getFileName(file)}_with-text.pdf`);
         showStatus('edit-status', 'success', `${FolioI18N.t('ap.edittext.ok', { n: pages.length })}
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_con_testo.pdf">${FolioI18N.t('ap.download')}</a>`);
+          <br/><a class="download-link" href="${objectUrl(pdfBytes)}" download="${getFileName(file)}_with-text.pdf">${FolioI18N.t('ap.download')}</a>`);
       } catch (e) { showStatus('edit-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
       btn.disabled = false; btn.innerHTML = '<span>✎</span> ' + FolioI18N.t('ap.edittext.btn');
-    });
-  }    // --- UNLOCK ---
-  function initUnlock() {
-    let file = null;
-    setupUpload({
-      inputId: 'unlock-input', listId: 'file-list-unlock-input', zoneId: 'upload-unlock-input',
-      onFiles: (f) => { file = f[0]; document.getElementById('unlock-btn').disabled = false; document.getElementById('unlock-controls').style.display = ''; }
-    });
-    document.getElementById('unlock-btn').addEventListener('click', async () => {
-      if (!file) return showStatus('unlock-status', 'error', FolioI18N.t('ap.err.noFile'));
-      const password = document.getElementById('unlock-password').value;
-      clearStatus('unlock-status');
-      const btn = document.getElementById('unlock-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.unlock.busy');
-      try {
-        const bytes = await readFileAsBytes(file);
-        const doc = await PDFDocument.load(bytes, { password });
-        const pdfBytes = await doc.save();
-        downloadPDF(pdfBytes, `${getFileName(file)}_sbloccato.pdf`);
-        showStatus('unlock-status', 'success', `${FolioI18N.t('ap.unlock.ok')}
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_sbloccato.pdf">${FolioI18N.t('ap.download')}</a>`);
-      } catch (e) {
-        showStatus('unlock-status', 'error', FolioI18N.t('ap.unlock.errBad'));
-      }
-      btn.disabled = false; btn.innerHTML = '<span>🔓</span> ' + FolioI18N.t('ap.unlock.btn');
-    });
-  }    // --- PROTECT ---
-  function initProtect() {
-    let file = null;
-    setupUpload({
-      inputId: 'protect-input', listId: 'file-list-protect-input', zoneId: 'upload-protect-input',
-      onFiles: (f) => { file = f[0]; document.getElementById('protect-btn').disabled = false; document.getElementById('protect-controls').style.display = ''; }
-    });
-    document.getElementById('protect-btn').addEventListener('click', async () => {
-      if (!file) return showStatus('protect-status', 'error', FolioI18N.t('ap.err.noFile'));
-      const userPw = document.getElementById('protect-user-pw').value;
-      const ownerPw = document.getElementById('protect-owner-pw').value;
-      if (!userPw && !ownerPw) return showStatus('protect-status', 'error', FolioI18N.t('ap.protect.errPw'));
-      clearStatus('protect-status');
-      const btn = document.getElementById('protect-btn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.protect.busy');
-      try {
-        const bytes = await readFileAsBytes(file);
-        const doc = await PDFDocument.load(bytes);
-        const pdfBytes = await doc.save({
-          userPassword: userPw || undefined,
-          ownerPassword: ownerPw || undefined,
-        });
-        downloadPDF(pdfBytes, `${getFileName(file)}_protetto.pdf`);
-        showStatus('protect-status', 'success', `${FolioI18N.t('ap.protect.ok')}
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${getFileName(file)}_protetto.pdf">${FolioI18N.t('ap.download')}</a>`);
-      } catch (e) { showStatus('protect-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
-      btn.disabled = false; btn.innerHTML = '<span>🔐</span> ' + FolioI18N.t('ap.protect.btn');
     });
   }    // --- JPG TO PDF ---
   function initJpgToPdf() {
@@ -1591,9 +1511,9 @@
           page.drawImage(img, { x: dx, y: dy, width: dw, height: dh });
         }
         const pdfBytes = await doc.save();
-        downloadPDF(pdfBytes, 'immagini.pdf');
+        downloadPDF(pdfBytes, 'images.pdf');
         showStatus('jpg-status', 'success', `${FolioI18N.t('ap.jpg.ok', { n: files.length })}
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="immagini.pdf">${FolioI18N.t('ap.download')}</a>`);
+          <br/><a class="download-link" href="${objectUrl(pdfBytes)}" download="images.pdf">${FolioI18N.t('ap.download')}</a>`);
       } catch (e) { showStatus('jpg-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
       btn.disabled = false; btn.innerHTML = '<span>🖼</span> ' + FolioI18N.t('ap.jpg.btn');
     });
@@ -1612,7 +1532,8 @@
         const doc = await PDFDocument.create();
         const font = await doc.embedFont(StandardFonts.Helvetica);
         const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
-        const page = doc.addPage([595.28, 841.89]);
+        const pageSize = [595.28, 841.89];
+        let page = doc.addPage(pageSize);
         const { width, height } = page.getSize();
 
         // Simple markdown-to-PDF conversion
@@ -1622,7 +1543,7 @@
         const maxW = width - margin * 2;
 
         for (const line of lines) {
-          if (y < 60) { /* would need new page - skip for simplicity */ continue; }
+          if (y < 60) { page = doc.addPage(pageSize); y = height - 60; }
           const trimmed = line.trim();
           if (!trimmed) { y -= 16; continue; }
 
@@ -1648,7 +1569,7 @@
         const pdfBytes = await doc.save();
         downloadPDF(pdfBytes, `${title.toLowerCase().replace(/\s+/g,'_')}.pdf`);
         showStatus('html-status', 'success', `${FolioI18N.t('ap.html.ok')}
-          <br/><a class="download-link" href="${URL.createObjectURL(new Blob([pdfBytes], {type:'application/pdf'}))}" download="${title.toLowerCase().replace(/\s+/g,'_')}.pdf">${FolioI18N.t('ap.download')}</a>`);
+          <br/><a class="download-link" href="${objectUrl(pdfBytes)}" download="${title.toLowerCase().replace(/\s+/g,'_')}.pdf">${FolioI18N.t('ap.download')}</a>`);
       } catch (e) { showStatus('html-status', 'error', FolioI18N.t('ap.err.run') + e.message); }
       btn.disabled = false; btn.innerHTML = '<span>🌐</span> ' + FolioI18N.t('ap.html.btn');
     });
@@ -1695,13 +1616,10 @@
     initWatermark();
     initCrop();
     initEditText();
-    initUnlock();
-    initProtect();
     initJpgToPdf();
     initHtmlToPdf();
+    FolioServerTools.initAll();
   }
-
-  document.addEventListener('DOMContentLoaded', init);
 
   // === Language switch (EN / IT) ===
   function applyLanguage(lang) {
@@ -1761,8 +1679,9 @@
   const langBtns = document.querySelectorAll('.lang-btn');
   for (let lb = 0; lb < langBtns.length; lb++) {
     langBtns[lb].addEventListener('click', function () {
-      FolioI18N.set(this.getAttribute('data-lang'));
-      applyLanguage(FolioI18N.current());
+      var lang = this.getAttribute('data-lang');
+      FolioI18N.set(lang);
+      applyLanguage(lang);
     });
   }
   document.addEventListener('DOMContentLoaded', function () {

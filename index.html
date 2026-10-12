@@ -367,6 +367,7 @@
       position: relative;
       overflow: hidden;
       display: inline-flex;
+      text-decoration: none;
       align-items: center;
       justify-content: center;
       gap: 8px;
@@ -1472,9 +1473,9 @@
           with the care they deserve. Everything stays in your browser.
         </p>
         <div class="fade-in visible fade-in-delay-2">
-          <button class="hero-cta" onclick="location.href='app.html'" data-i18n-html="ln.hero.ctaMainHtml">
+          <a href="app.html" class="hero-cta" data-i18n-html="ln.hero.ctaMainHtml">
             Start for free <span aria-hidden="true">&rarr;</span>
-          </button>
+          </a>
           <a href="app.html" class="hero-cta-secondary" data-i18n-html="ln.hero.ctaAltHtml">
             Open PDF Editor <span aria-hidden="true">&rarr;</span>
           </a>
@@ -1831,8 +1832,9 @@
     const langBtns = document.querySelectorAll('.lang-btn');
     for (let lb = 0; lb < langBtns.length; lb++) {
       langBtns[lb].addEventListener('click', function () {
-        FolioI18N.set(this.getAttribute('data-lang'));
-        applyLanguage(FolioI18N.current());
+        var lang = this.getAttribute('data-lang');
+        FolioI18N.set(lang);
+        applyLanguage(lang);
       });
     }
     applyLanguage(FolioI18N.current());
