@@ -502,5 +502,14 @@ test('the inline text editor maps fonts and rewrites a real PDF', async () => {
   const text = (await extractText(Buffer.from(await doc.save()))).join('\n');
   assert.match(text, /Rewritten text/, 'the replacement text is in the document');
 
+  // --- uploading opens the editor view, with nothing to apply yet
+  const d = w.document;
+  selectTool(dom, 'edit-text');
+  putFiles(dom, 'edit-input', [await pdfFile(w, 'doc.pdf', { pages: 1 })]);
+  await settle(80);
+  assert.notEqual(d.getElementById('edit-controls').style.display, 'none', 'the view opens on upload');
+  assert.equal(d.getElementById('edit-btn').disabled, true, 'apply is disabled until something changes');
+  assert.equal(d.getElementById('edit-reset').disabled, true, 'there is nothing to discard yet');
+
   w.close();
 });
