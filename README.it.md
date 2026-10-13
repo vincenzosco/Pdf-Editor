@@ -15,9 +15,11 @@ npm start        # http://localhost/app.html (porta 80 di default; PORT=8080 per
 npm test         # test server + test client
 ```
 
-`npm start` serve l'area di lavoro su `/app.html` e la landing su `/`. Gli
-strumenti solo-browser (unisci, dividi, ruota, filigrana, JPG in PDF, …)
-funzionano anche senza server. Gli strumenti marcati *server* lo richiedono e
+`npm start` serve l'area di lavoro su `/app.html` e la landing su `/`. La
+landing ha **quattro temi** (Aurora, Neon, Carta, Bento) con uno switch
+dell'intestazione, e tutte le animazioni sono in CSS puro: non si scarica nulla
+per animarla. Gli strumenti solo-browser (unisci, dividi, ruota, filigrana, JPG
+in PDF, …) funzionano anche senza server. Gli strumenti marcati *server* lo richiedono e
 chiamano `/api`: se apri `app.html` come file, quei pannelli spiegano che sono
 offline invece di fallire in silenzio.
 
@@ -35,7 +37,9 @@ Altri script:
 
 **Nel browser** (i file non lasciano mai il dispositivo) — unisci, dividi,
 rimuovi/estrai/riordina pagine, ruota, numeri di pagina, filigrana, ritaglia,
-modifica testo, JPG in PDF, HTML in PDF.
+JPG in PDF, HTML in PDF. **Modifica testo** renderizza la pagina e ci appoggia
+sopra il testo vero: clicca una riga e riscrivila sul posto, mantenendo
+dimensione e font.
 
 **Sul server (JS puro)** — PDF in JPG, PDF in PowerPoint, OCR, scansione, estrai
 testo, raddrizza (deskew), PDF in Word, PDF in Excel, PDF in HTML, PDF in

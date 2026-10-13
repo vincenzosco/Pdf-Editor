@@ -1,1669 +1,892 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="aurora">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Folio — Precision PDF Tools</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="Folio is a free, in-browser PDF toolkit. Annotate, edit, rotate, split, merge, watermark and sign documents — nothing to install, everything stays on your device." />
-  <meta name="theme-color" content="#1F4C82" />
-  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="apple-touch-icon" href="icon-512.png" />
+
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Folio" />
-  <meta property="og:locale" content="en_US" />
-  <meta property="og:locale:alternate" content="it_IT" />
   <meta property="og:title" content="Folio — Precision PDF Tools" />
-  <meta property="og:description" content="Mark up your PDFs with surgical precision. Annotate, edit and sign documents right in your browser — no install, no upload." />
-  <!-- Both point at the deployed instance; change them here and wherever the
-       site is linked if it moves (see README.md). -->
+  <meta property="og:description" content="A free, in-browser PDF toolkit: annotate, edit, sign and convert without uploading anything." />
   <meta property="og:url" content="https://34.61.56.12.nip.io/" />
   <meta property="og:image" content="https://34.61.56.12.nip.io/og-image.png" />
+  <meta property="og:locale" content="en_US" />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="theme-color" id="metaThemeColor" content="#070A16" />
+
+  <title>Folio — Precision PDF Tools</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon-512.png" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
-    rel="stylesheet"
-  />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Theme before first paint: no flash of the wrong palette. -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('folio.theme');
+        var light = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+        if (!t) t = light ? 'bento' : 'aurora';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'aurora');
+      }
+    })();
+  </script>
+
+  <!-- The reveals start invisible and are switched on by script; without it,
+       show the content rather than hiding the whole page. -->
+  <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
+
   <style>
-    /* ===== RESET & BASE ===== */
-    *,
-    *::before,
-    *::after {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    /* ============================================================
+       Design tokens. Each theme is one block of custom properties,
+       so every component themes itself without a single conditional.
+       ============================================================ */
     :root {
-      --bg: #F4F3EF;
+      --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+      --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+      --step--1: 0.8125rem;
+      --step-0: 1rem;
+      --step-1: 1.125rem;
+      --step-2: 1.375rem;
+      --step-3: 1.75rem;
+      --step-4: clamp(2rem, 1.4rem + 2.4vw, 3rem);
+      --step-5: clamp(2.4rem, 1.4rem + 4vw, 4.1rem);
+
+      --radius: 12px;
+      --radius-lg: 20px;
+      --radius-pill: 999px;
+      --shell: 1180px;
+      --gutter: clamp(1.1rem, 4vw, 2.5rem);
+      --section: clamp(4rem, 9vw, 7.5rem);
+
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --fast: 180ms;
+      --mid: 320ms;
+      --slow: 620ms;
+    }
+
+    /* ---- Aurora: dark, animated mesh, glass. The house default. ---- */
+    :root[data-theme='aurora'] {
+      color-scheme: dark;
+      --bg: #070A16;
+      --bg-soft: #0B1024;
+      --surface: rgba(255, 255, 255, 0.055);
+      --surface-2: rgba(255, 255, 255, 0.09);
+      --text: #ECF0FF;
+      --text-2: #AEB8DA;
+      --border: rgba(255, 255, 255, 0.13);
+      --border-strong: rgba(255, 255, 255, 0.26);
+      --accent: #8D7BFF;
+      --accent-2: #35E0E6;
+      --accent-ink: #0A0A14;
+      --ring: #A79BFF;
+      --shadow: 0 24px 60px rgba(3, 6, 20, 0.55);
+      --glow: 0 0 64px rgba(141, 123, 255, 0.35);
+      --mesh-1: #6D5BFF;
+      --mesh-2: #16B8C8;
+      --mesh-3: #B84DFF;
+      --mesh-opacity: 0.55;
+      --glass-blur: 14px;
+    }
+
+    /* ---- Neon: dark, high contrast, glow. ---- */
+    :root[data-theme='neon'] {
+      color-scheme: dark;
+      --bg: #04050A;
+      --bg-soft: #080B14;
+      --surface: rgba(255, 255, 255, 0.045);
+      --surface-2: rgba(0, 240, 255, 0.07);
+      --text: #EAFDFF;
+      --text-2: #9FB6C6;
+      --border: rgba(0, 240, 255, 0.20);
+      --border-strong: rgba(0, 240, 255, 0.42);
+      --accent: #00F0FF;
+      --accent-2: #FF2BD6;
+      --accent-ink: #00121A;
+      --ring: #00F0FF;
+      --shadow: 0 24px 60px rgba(0, 8, 16, 0.7);
+      --glow: 0 0 48px rgba(0, 240, 255, 0.45);
+      --mesh-1: #00F0FF;
+      --mesh-2: #FF2BD6;
+      --mesh-3: #7A00FF;
+      --mesh-opacity: 0.42;
+      --glass-blur: 10px;
+    }
+
+    /* ---- Carta: light, editorial, typographic. ---- */
+    :root[data-theme='carta'] {
+      color-scheme: light;
+      --bg: #FAF7F0;
+      --bg-soft: #F2EDE2;
+      --surface: rgba(255, 255, 255, 0.78);
+      --surface-2: #FFFFFF;
+      --text: #1C1B18;
+      --text-2: #57534A;
+      --border: rgba(28, 27, 24, 0.15);
+      --border-strong: rgba(28, 27, 24, 0.34);
+      --accent: #1F5D45;
+      --accent-2: #A8551F;
+      --accent-ink: #FFFFFF;
+      --ring: #1F5D45;
+      --shadow: 0 18px 40px rgba(46, 40, 30, 0.14);
+      --glow: 0 14px 44px rgba(31, 93, 69, 0.18);
+      --mesh-1: #C9D8C4;
+      --mesh-2: #E8D5BE;
+      --mesh-3: #D9C7E5;
+      --mesh-opacity: 0.8;
+      --glass-blur: 0px;
+    }
+
+    /* ---- Bento: light, neutral, modular. ---- */
+    :root[data-theme='bento'] {
+      color-scheme: light;
+      --bg: #F5F5F7;
+      --bg-soft: #ECECEF;
       --surface: #FFFFFF;
-      --text-primary: #1B1C20;
-      --text-secondary: #787C82;
-      --accent-red: #D13433;
-      --accent-red-light: rgba(209, 52, 51, 0.08);
-      --ink-blue: #1F4C82;
-      --ink-blue-light: rgba(31, 76, 130, 0.06);
-      --amber: #B45309;
-      --border: #E7E4DE;
-      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.04);
-      --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
-
-      --display: 'Fraunces', Georgia, 'Times New Roman', serif;
-      --body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
-
-      --max-width: 1200px;
-      --nav-height: 68px;
-      --grad-ink: linear-gradient(135deg, #1F4C82 0%, #2F6FB3 100%);
-      --grad-ink-deep: linear-gradient(135deg, #16324F 0%, #1F4C82 100%);
-      --ring: 0 0 0 4px rgba(31, 76, 130, 0.14);
-      --shadow-lift: 0 16px 40px -18px rgba(27, 28, 32, 0.22), 0 2px 8px rgba(27, 28, 32, 0.05);
+      --surface-2: #FFFFFF;
+      --text: #0F172A;
+      --text-2: #46536B;
+      --border: rgba(15, 23, 42, 0.10);
+      --border-strong: rgba(15, 23, 42, 0.24);
+      --accent: #2563EB;
+      --accent-2: #7C3AED;
+      --accent-ink: #FFFFFF;
+      --ring: #2563EB;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.10);
+      --glow: 0 12px 34px rgba(37, 99, 235, 0.18);
+      --mesh-1: #C7D7FE;
+      --mesh-2: #DDD6FE;
+      --mesh-3: #BFDBFE;
+      --mesh-opacity: 0.9;
+      --glass-blur: 0px;
     }
-    /* UI styling adapted from open-source components on https://uiverse.io (MIT) */
 
-    html {
-      scroll-behavior: smooth;
-    }
+    /* ============================ base ============================ */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 
     body {
-      font-family: var(--body);
+      margin: 0;
       background: var(--bg);
-      color: var(--text-primary);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: var(--step-0);
       line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
+      transition: background-color var(--slow) var(--ease), color var(--slow) var(--ease);
+      overflow-x: hidden;
     }
 
-    /* ===== UTILITY ===== */
-    .container {
-      max-width: var(--max-width);
-      margin: 0 auto;
-      padding: 0 24px;
-    }
-
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      border: 0;
-    }
-
-    .section-label {
-      display: inline-block;
-      font-family: var(--mono);
-      font-size: 0.75rem;
-      font-weight: 500;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--text-secondary);
-      margin-bottom: 16px;
-    }
-
-    .section-label::before {
+    /* The animated mesh sits behind everything and is pure decoration. */
+    body::before {
       content: '';
-      display: inline-block;
-      width: 20px;
-      height: 1.5px;
-      background: var(--accent-red);
-      vertical-align: middle;
-      margin-right: 10px;
-    }
-
-    .fade-in {
-      opacity: 0;
-      transform: translateY(20px);
-      transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-    }
-
-    .fade-in.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .fade-in-delay-1 { transition-delay: 0.1s; }
-    .fade-in-delay-2 { transition-delay: 0.2s; }
-    .fade-in-delay-3 { transition-delay: 0.3s; }
-    .fade-in-delay-4 { transition-delay: 0.4s; }
-
-    /* ===== NAV ===== */
-    nav {
       position: fixed;
+      inset: -25vmax;
+      z-index: -1;
+      pointer-events: none;
+      opacity: var(--mesh-opacity);
+      background:
+        radial-gradient(38vmax 38vmax at 18% 22%, var(--mesh-1), transparent 62%),
+        radial-gradient(34vmax 34vmax at 82% 18%, var(--mesh-2), transparent 60%),
+        radial-gradient(40vmax 40vmax at 55% 88%, var(--mesh-3), transparent 62%);
+      filter: blur(46px);
+      animation: mesh-drift 34s ease-in-out infinite alternate;
+    }
+
+    @keyframes mesh-drift {
+      0%   { transform: translate3d(0, 0, 0) scale(1); }
+      50%  { transform: translate3d(-3%, 2%, 0) scale(1.08); }
+      100% { transform: translate3d(3%, -2%, 0) scale(1.04); }
+    }
+
+    h1, h2, h3 { font-family: var(--font-display); font-weight: 600; line-height: 1.12; margin: 0 0 0.6em; letter-spacing: -0.01em; }
+    h1 { font-size: var(--step-5); }
+    h2 { font-size: var(--step-4); }
+    h3 { font-size: var(--step-2); }
+    p { margin: 0 0 1rem; color: var(--text-2); }
+    a { color: inherit; text-decoration: none; }
+    img, svg { display: block; max-width: 100%; }
+
+    :focus-visible {
+      outline: 2px solid var(--ring);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    .skip-link {
+      position: absolute;
+      left: -9999px;
       top: 0;
-      left: 0;
-      right: 0;
       z-index: 100;
-      height: var(--nav-height);
-      background: rgba(247, 246, 242, 0.8);
-      backdrop-filter: blur(14px) saturate(1.4);
-      -webkit-backdrop-filter: blur(14px) saturate(1.4);
+      padding: 0.75rem 1.25rem;
+      background: var(--accent);
+      color: var(--accent-ink);
+      border-radius: 0 0 var(--radius) 0;
+      font-weight: 600;
+    }
+    .skip-link:focus { left: 0; }
+
+    .shell { width: min(100% - (var(--gutter) * 2), var(--shell)); margin-inline: auto; }
+
+    .section { padding-block: var(--section); }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: var(--font-mono);
+      font-size: var(--step--1);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .lede { font-size: var(--step-1); max-width: 56ch; }
+
+    /* ============================ motion ============================ */
+    .reveal {
+      opacity: 0;
+      transform: translate3d(0, 22px, 0);
+      transition: opacity var(--slow) var(--ease), transform var(--slow) var(--ease);
+      transition-delay: calc(var(--d, 0) * 90ms);
+    }
+    .reveal.is-in { opacity: 1; transform: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      body::before { animation: none; }
+      .reveal { opacity: 1; transform: none; transition: none; }
+      * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+    }
+
+    /* ============================ nav ============================ */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+      background: var(--bg);
+      background: color-mix(in srgb, var(--bg) 78%, transparent);
       border-bottom: 1px solid var(--border);
     }
-
-    nav::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: -1px;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(209, 52, 51, 0.45), rgba(31, 76, 130, 0.4), transparent);
-      pointer-events: none;
-    }
-
-    nav .container {
+    .nav-inner {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      height: 100%;
+      gap: 1rem;
+      min-height: 68px;
+    }
+    .brand { display: inline-flex; align-items: center; gap: 0.6rem; font-family: var(--font-display); font-size: var(--step-1); font-weight: 700; }
+    .brand-mark {
+      width: 30px; height: 30px; flex: none;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: var(--glow);
     }
 
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-      color: var(--text-primary);
-      font-family: var(--display);
-      font-size: 1.25rem;
-      font-weight: 700;
-      font-variation-settings: 'opsz' 144;
-      letter-spacing: -0.02em;
-    }
-
-    .logo-mark {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 35% 30%, #E4574F, var(--accent-red) 55%, #8F1D1C);
-      box-shadow: 0 0 0 3px rgba(209, 52, 51, 0.12);
-    }
-
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-      list-style: none;
-    }
-
+    .nav-links { display: flex; align-items: center; gap: 0.35rem; list-style: none; margin: 0 0 0 auto; padding: 0; }
     .nav-links a {
-      text-decoration: none;
-      color: var(--text-secondary);
-      font-size: 0.875rem;
-      font-weight: 500;
-      transition: color 0.2s;
+      display: inline-flex; align-items: center;
+      padding: 0.5rem 0.8rem;
+      border-radius: var(--radius-pill);
+      font-size: var(--step-0);
+      color: var(--text-2);
+      transition: color var(--fast) var(--ease), background-color var(--fast) var(--ease);
     }
+    .nav-links a:hover { color: var(--text); background: var(--surface-2); }
 
-    .nav-links a:hover,
-    .nav-links a:focus-visible {
-      color: var(--text-primary);
-    }
+    .nav-tools { display: flex; align-items: center; gap: 0.6rem; margin-left: 0.4rem; }
 
-    .nav-links .nav-cta {
+    .theme-switch, .lang-switch {
       display: inline-flex;
-      align-items: center;
-      padding: 9px 22px;
-      background: var(--grad-ink);
-      color: #fff;
-      border-radius: 999px;
-      font-size: 0.875rem;
-      font-weight: 600;
-      box-shadow: 0 8px 18px -8px rgba(31, 76, 130, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.18);
-      transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
-    }
-
-    .nav-links .nav-cta:hover,
-    .nav-links .nav-cta:focus-visible {
-      color: #fff;
-      filter: brightness(1.08);
-      transform: translateY(-1px);
-      box-shadow: 0 12px 24px -10px rgba(31, 76, 130, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.18);
-    }
-
-    /* Mobile nav toggle */
-    .nav-toggle {
-      display: none;
-      flex-direction: column;
-      gap: 5px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 4px;
-    }
-
-    .nav-toggle span {
-      display: block;
-      width: 24px;
-      height: 2px;
-      background: var(--text-primary);
-      border-radius: 1px;
-      transition: transform 0.3s, opacity 0.3s;
-    }
-
-    .nav-toggle[aria-expanded="true"] span:nth-child(1) {
-      transform: rotate(45deg) translate(5px, 5px);
-    }
-    .nav-toggle[aria-expanded="true"] span:nth-child(2) {
-      opacity: 0;
-    }
-    .nav-toggle[aria-expanded="true"] span:nth-child(3) {
-      transform: rotate(-45deg) translate(5px, -5px);
-    }
-
-    /* Language switch — segmented pill */
-    .nav-links {
-      margin-left: auto;
-    }
-
-    .lang-switch {
-      display: inline-flex;
-      align-items: center;
       gap: 2px;
-      margin-left: 14px;
       padding: 3px;
       border: 1px solid var(--border);
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.55);
+      border-radius: var(--radius-pill);
+      background: var(--surface);
     }
-
-    .lang-btn {
-      border: none;
+    .theme-btn, .lang-btn {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      border: 0;
       background: transparent;
-      padding: 5px 12px;
-      border-radius: 999px;
-      font-family: var(--body);
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      color: var(--text-secondary);
+      color: var(--text-2);
+      font: inherit;
+      font-size: var(--step--1);
+      padding: 0.35rem 0.6rem;
+      border-radius: var(--radius-pill);
       cursor: pointer;
-      transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+      transition: background-color var(--fast) var(--ease), color var(--fast) var(--ease);
+    }
+    .theme-btn:hover, .lang-btn:hover { color: var(--text); }
+    .theme-btn[aria-pressed='true'], .lang-btn[aria-pressed='true'] {
+      background: var(--accent);
+      color: var(--accent-ink);
+    }
+    .theme-btn span:not([data-icon]) { display: none; }
+    @media (min-width: 1080px) { .theme-btn span:not([data-icon]) { display: inline; } }
+
+    .nav-toggle {
+      display: none;
+      width: 44px; height: 44px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      align-items: center; justify-content: center;
     }
 
-    .lang-btn:hover {
-      color: var(--text-primary);
+    /* ============================ buttons ============================ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 1.4rem;
+      border-radius: var(--radius-pill);
+      border: 1px solid transparent;
+      font-weight: 600;
+      font-size: var(--step-0);
+      cursor: pointer;
+      transition: transform var(--mid) var(--ease), box-shadow var(--mid) var(--ease), background-color var(--fast) var(--ease), color var(--fast) var(--ease), border-color var(--fast) var(--ease);
     }
+    .btn-primary { background: var(--accent); color: var(--accent-ink); box-shadow: var(--glow); }
+    .btn-primary:hover { box-shadow: 0 0 34px color-mix(in srgb, var(--accent) 55%, transparent); }
+    .btn-ghost { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
+    .btn-ghost:hover { background: var(--surface-2); }
+    .btn svg { flex: none; }
 
-    .lang-btn.active {
-      background: var(--grad-ink);
-      color: #fff;
-      box-shadow: 0 2px 6px -2px rgba(31, 76, 130, 0.5);
-    }
-
-    .lang-btn:focus-visible {
-      outline: 2px solid var(--ink-blue);
-      outline-offset: 1px;
-    }
-
-    /* ===== HERO ===== */
-    .hero {
-      padding: calc(var(--nav-height) + 64px) 0 80px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .hero::before {
-      content: '';
-      position: absolute;
-      top: -320px;
-      right: -220px;
-      width: 720px;
-      height: 720px;
-      background: radial-gradient(circle, rgba(209, 52, 51, 0.07) 0%, transparent 65%);
-      pointer-events: none;
-    }
-
-    .hero::after {
-      content: '';
-      position: absolute;
-      bottom: -260px;
-      left: -220px;
-      width: 640px;
-      height: 640px;
-      background: radial-gradient(circle, rgba(31, 76, 130, 0.06) 0%, transparent 65%);
-      pointer-events: none;
-    }
-
-    .hero .container {
+    /* ============================ hero ============================ */
+    .hero { padding-block: clamp(2.5rem, 6vw, 5rem) var(--section); }
+    .hero-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 64px;
+      gap: clamp(2rem, 5vw, 4rem);
       align-items: center;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 980px) {
+      .hero-grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); }
     }
 
-    .hero-content h1 {
-      font-family: var(--display);
-      font-size: clamp(2.5rem, 5vw, 4rem);
-      font-weight: 700;
-      font-variation-settings: 'opsz' 144;
-      line-height: 1.08;
-      letter-spacing: -0.03em;
-      margin-bottom: 20px;
-      color: var(--text-primary);
+    .hero h1 .highlight {
+      background: linear-gradient(100deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
     }
 
-    .hero-content h1 .highlight {
-      color: var(--accent-red);
-      text-decoration: underline;
-      text-decoration-color: rgba(209, 52, 51, 0.3);
-      text-underline-offset: 6px;
-      text-decoration-thickness: 2px;
-    }
-
-    .hero-sub {
-      font-size: 1.125rem;
-      color: var(--text-secondary);
-      max-width: 480px;
-      line-height: 1.7;
-      margin-bottom: 32px;
-    }
-
-    .hero-cta {
-      position: relative;
-      overflow: hidden;
-      display: inline-flex;
-      text-decoration: none;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 15px 30px;
-      background: var(--grad-ink);
-      color: #fff;
-      border: none;
-      border-radius: 999px;
-      font-family: var(--body);
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 14px 28px -12px rgba(31, 76, 130, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-    }
-
-    /* uiverse-style shine sweep on hover */
-    .hero-cta::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -60%;
-      width: 45%;
-      height: 100%;
-      background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.55), transparent);
-      transform: skewX(-20deg);
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .hero-cta span {
-      display: inline-block;
-      transition: transform 0.2s ease;
-    }
-
-    .hero-cta:hover,
-    .hero-cta:focus-visible {
-      filter: brightness(1.05);
-      transform: translateY(-2px);
-      box-shadow: 0 20px 36px -14px rgba(31, 76, 130, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    }
-
-    .hero-cta:hover::after {
-      opacity: 1;
-      animation: uiverse-sweep 0.9s ease;
-    }
-
-    .hero-cta:hover span {
-      transform: translateX(4px);
-    }
-
-    .hero-cta:active {
-      transform: translateY(0) scale(0.98);
-    }
-
-    @keyframes uiverse-sweep {
-      to { left: 130%; }
-    }
-
-    .hero-cta-secondary {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 14px 24px;
-      background: rgba(255, 255, 255, 0.65);
-      color: var(--ink-blue);
-      border: 1px solid #D8D3C9;
-      border-radius: 999px;
-      font-family: var(--body);
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      margin-left: 12px;
-      transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease, transform 0.2s ease;
-    }
-
-    .hero-cta-secondary span {
-      display: inline-block;
-      transition: transform 0.2s ease;
-    }
-
-    .hero-cta-secondary:hover,
-    .hero-cta-secondary:focus-visible {
-      border-color: var(--ink-blue);
-      background: var(--ink-blue-light);
-      color: var(--ink-blue);
-      transform: translateY(-2px);
-    }
-
-    .hero-cta-secondary:hover span {
-      transform: translateX(3px);
-    }
-
-    .hero-trust {
-      margin-top: 40px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.8125rem;
-      color: var(--text-secondary);
-    }
-
-    .hero-trust-avatars {
-      display: flex;
-    }
-
-    .hero-trust-avatars span {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      border: 2px solid var(--bg);
-      font-size: 0.625rem;
-      font-weight: 600;
-      color: #fff;
-      margin-right: -6px;
-    }
-
-    .hero-trust-avatars span:nth-child(1) { background: #1F4C82; }
-    .hero-trust-avatars span:nth-child(2) { background: #D13433; }
-    .hero-trust-avatars span:nth-child(3) { background: #B45309; }
-
-    /* ===== SIGNATURE: DOCUMENT PREVIEW ===== */
-    .hero-visual {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .document-card {
-      width: 100%;
-      max-width: 460px;
+    .badges { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.6rem; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      padding: 0.4rem 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
       background: var(--surface);
-      border-radius: 4px;
-      box-shadow: var(--shadow-lg);
-      padding: 32px 36px;
+      font-size: var(--step--1);
+      color: var(--text-2);
+    }
+    .badge svg { color: var(--accent); }
+
+    .cta-row { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.75rem; }
+
+    /* ---- annotated document mockup ---- */
+    .doc-stage { position: relative; }
+    .doc-stage::after {
+      content: '';
+      position: absolute;
+      inset: 12% 8% -6% 8%;
+      z-index: -1;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(120deg, var(--accent), var(--accent-2));
+      filter: blur(52px);
+      opacity: 0.35;
+    }
+    .doc {
       position: relative;
-      overflow: hidden;
-      transform: perspective(800px) rotateY(-1deg);
-      transition: transform 0.4s ease;
+      padding: clamp(1.2rem, 3vw, 2rem);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface-2);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+      box-shadow: var(--shadow);
+      transition: transform var(--slow) var(--ease);
+      will-change: transform;
     }
+    .doc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.2rem; }
+    .doc-head h3 { margin: 0; font-size: var(--step-1); }
+    .doc-ref { font-family: var(--font-mono); font-size: var(--step--1); color: var(--text-2); }
+    .doc-body p { font-size: var(--step--1); color: var(--text-2); margin-bottom: 0.9rem; }
+    .doc-body strong { color: var(--text); }
 
-    .document-card:hover {
-      transform: perspective(800px) rotateY(0deg);
+    .anno { position: relative; cursor: pointer; }
+    .anno-line {
+      background-image: linear-gradient(var(--accent), var(--accent));
+      background-repeat: no-repeat;
+      background-position: 0 100%;
+      background-size: 0% 2px;
+      transition: background-size var(--mid) var(--ease), background-color var(--mid) var(--ease);
+      border-radius: 3px;
     }
+    .anno-line.is-on { background-size: 100% 2px; }
+    .anno-mark { transition: background-color var(--mid) var(--ease); border-radius: 3px; }
+    .anno-mark.is-on { background-color: color-mix(in srgb, var(--accent) 22%, transparent); }
+    .anno[data-on='1'] .anno-tip { opacity: 1; transform: translate(-50%, -6px); }
 
-    .document-card::after {
-      content: '';
+    .anno-tip {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 55%;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), transparent);
-      pointer-events: none;
-      opacity: 0.45;
-    }
-
-    /* Paper texture overlay */
-    .document-card::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-      background-size: 100px 100px;
-      pointer-events: none;
-      opacity: 0.6;
-      mix-blend-mode: multiply;
-    }
-
-    .document-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .document-header h3 {
-      font-family: var(--display);
-      font-size: 0.8125rem;
-      font-weight: 700;
-      font-variation-settings: 'opsz' 36;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--text-secondary);
-    }
-
-    .document-header .doc-number {
-      font-family: var(--mono);
+      left: 50%;
+      bottom: 100%;
+      transform: translate(-50%, 0);
+      opacity: 0;
+      white-space: nowrap;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-family: var(--font-mono);
       font-size: 0.6875rem;
-      color: var(--text-secondary);
+      padding: 0.2rem 0.5rem;
+      border-radius: var(--radius);
+      transition: opacity var(--mid) var(--ease), transform var(--mid) var(--ease);
+      pointer-events: none;
     }
 
-    .document-body {
-      position: relative;
-    }
-
-    .document-body p {
-      font-size: 0.8125rem;
-      line-height: 1.8;
-      color: var(--text-primary);
-      margin-bottom: 12px;
-    }
-
-    .document-body p:last-child {
-      margin-bottom: 0;
-    }
-
-    /* Annotated text spans */
-    .doc-annotate {
-      position: relative;
-      cursor: default;
-    }
-
-    .doc-underline {
-      position: relative;
-      color: var(--accent-red);
-      font-weight: 600;
-    }
-
-    .doc-underline::after {
-      content: '';
-      position: absolute;
-      bottom: -1px;
-      left: 0;
-      right: 0;
-      height: 1.5px;
-      background: var(--accent-red);
-      opacity: 0.5;
-      transform: scaleX(0);
-      transform-origin: left;
-    }
-
-    .doc-underline.visible::after {
-      animation: underlineIn 0.6s ease-out forwards;
-    }
-
-    .doc-highlight {
-      position: relative;
-      display: inline;
-      cursor: default;
-    }
-
-    .doc-highlight::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: var(--accent-red-light);
-      border-radius: 2px;
-      transform: scaleX(0);
-      transform-origin: left;
-    }
-
-    .doc-highlight.visible::before {
-      animation: highlightSweep 0.8s ease-out forwards;
-    }
-
-    .doc-margin-note {
-      position: absolute;
-      right: -8px;
-      transform: translateX(100%);
-      top: 72px;
-      width: 140px;
+    .doc-note {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      margin-top: 0.4rem;
+      padding: 0.4rem 0.7rem;
+      border-left: 2px solid var(--accent-2);
+      background: color-mix(in srgb, var(--accent-2) 12%, transparent);
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-2);
       opacity: 0;
+      transform: translateX(-8px);
+      transition: opacity var(--mid) var(--ease), transform var(--mid) var(--ease);
     }
-
-    .doc-margin-note.visible {
-      animation: marginSlideIn 0.5s ease-out 0.8s forwards;
-    }
-
-    .doc-margin-note-inner {
-      font-family: var(--mono);
-      font-size: 0.625rem;
-      line-height: 1.5;
-      color: var(--accent-red);
-      background: var(--surface);
-      border-left: 2px solid var(--accent-red);
-      padding: 6px 10px;
-      box-shadow: var(--shadow-sm);
-      border-radius: 0 3px 3px 0;
-    }
-
-    .doc-margin-note-inner .arrow {
-      font-family: var(--body);
-      font-size: 0.75rem;
-    }
+    .doc-note.is-on { opacity: 1; transform: none; }
 
     .doc-stamp {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) rotate(-12deg) scale(0);
-      opacity: 0;
-      border: 2px solid var(--accent-red);
-      color: var(--accent-red);
-      font-family: var(--display);
-      font-size: 0.875rem;
-      font-weight: 700;
-      padding: 4px 14px;
-      border-radius: 2px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      pointer-events: none;
-    }
-
-    .doc-stamp.visible {
-      animation: stampAppear 0.4s ease-out 1.6s forwards;
-    }
-
-    .doc-circle {
-      position: absolute;
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      border: 2px solid var(--accent-red);
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .doc-circle.visible {
-      animation: circleDraw 0.6s ease-out 2s forwards;
-    }
-
-    /* Annotation tooltips on hover */
-    .doc-tooltip {
-      position: absolute;
-      background: var(--text-primary);
-      color: #fff;
+      right: clamp(0.8rem, 2vw, 1.6rem);
+      bottom: clamp(0.8rem, 2vw, 1.6rem);
+      border: 2px solid var(--accent-2);
+      color: var(--accent-2);
+      font-family: var(--font-mono);
       font-size: 0.6875rem;
-      font-family: var(--body);
-      padding: 4px 10px;
-      border-radius: 4px;
-      white-space: nowrap;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s, transform 0.2s;
-      transform: translateY(4px);
-      z-index: 10;
-    }
-
-    .doc-annotate:focus-visible {
-      outline: 2px solid var(--ink-blue);
-      outline-offset: 2px;
-      border-radius: 2px;
-    }
-
-    .doc-annotate:hover .doc-tooltip,
-    .doc-annotate:focus-within .doc-tooltip,
-    .doc-annotate:focus-visible .doc-tooltip {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .doc-underline .doc-tooltip {
-      bottom: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%) translateY(4px);
-    }
-
-    .doc-underline:hover .doc-tooltip,
-    .doc-underline:focus-within .doc-tooltip,
-    .doc-underline:focus-visible .doc-tooltip {
-      transform: translateX(-50%) translateY(0);
-    }
-
-    /* ===== KEYFRAMES ===== */
-    @keyframes underlineIn {
-      to { transform: scaleX(1); }
-    }
-
-    @keyframes highlightSweep {
-      to { transform: scaleX(1); }
-    }
-
-    @keyframes marginSlideIn {
-      to {
-        opacity: 1;
-        transform: translateX(calc(100% + 8px));
-      }
-    }
-
-    @keyframes stampAppear {
-      0% {
-        opacity: 0;
-        transform: translate(-50%, -50%) rotate(-12deg) scale(0.5);
-      }
-      60% {
-        opacity: 1;
-        transform: translate(-50%, -50%) rotate(-10deg) scale(1.1);
-      }
-      100% {
-        opacity: 0.7;
-        transform: translate(-50%, -50%) rotate(-12deg) scale(1);
-      }
-    }
-
-    @keyframes circleDraw {
-      0% {
-        opacity: 0;
-        transform: scale(0.3);
-      }
-      50% {
-        opacity: 0.8;
-        transform: scale(1.1);
-      }
-      100% {
-        opacity: 0.4;
-        transform: scale(1);
-      }
-    }
-
-    /* ===== TRUST BAR ===== */
-    .trust-bar {
-      padding: 40px 0 60px;
-      border-top: 1px solid var(--border);
-    }
-
-    .trust-bar .container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 48px;
-    }
-
-    .trust-bar-label {
-      font-size: 0.75rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-      letter-spacing: 0.06em;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
-      width: 100%;
-      text-align: center;
-      margin-bottom: 8px;
+      padding: 0.4rem 0.7rem;
+      border-radius: var(--radius);
+      transform: rotate(-9deg) scale(0.9);
+      opacity: 0;
+      transition: opacity var(--mid) var(--ease), transform var(--mid) var(--ease);
     }
+    .doc-stamp.is-on { opacity: 1; transform: rotate(-9deg) scale(1); }
 
-    .trust-logo {
-      height: 24px;
-      opacity: 0.3;
-      font-family: var(--display);
-      font-size: 1rem;
-      font-weight: 600;
-      color: var(--text-secondary);
-      letter-spacing: 0.03em;
-      transition: opacity 0.3s;
-    }
-
-    .trust-logo:hover {
-      opacity: 0.5;
-    }
-
-    /* ===== FEATURES ===== */
-    .features {
-      padding: 80px 0;
-    }
-
-    .features-header {
-      text-align: center;
-      max-width: 640px;
-      margin: 0 auto 56px;
-    }
-
-    .features-header h2 {
-      font-family: var(--display);
-      font-size: clamp(1.75rem, 3.5vw, 2.5rem);
-      font-weight: 700;
-      font-variation-settings: 'opsz' 144;
-      line-height: 1.15;
-      letter-spacing: -0.02em;
-      margin-bottom: 16px;
-    }
-
-    .features-header p {
-      color: var(--text-secondary);
-      font-size: 1.0625rem;
-      line-height: 1.7;
-    }
-
-    .features-grid {
+    /* ============================ stats ============================ */
+    .stats {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-    }
-
-    .feature-card {
-      position: relative;
-      overflow: hidden;
-      background: var(--surface);
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1px;
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 34px 30px;
-      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-      cursor: default;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: var(--border);
     }
+    .stat {
+      background: var(--surface-2);
+      padding: clamp(1.2rem, 3vw, 2rem);
+      text-align: center;
+    }
+    .stat-num {
+      display: block;
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 5vw, 2.9rem);
+      font-weight: 700;
+      line-height: 1;
+      background: linear-gradient(120deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .stat-label { display: block; margin-top: 0.5rem; font-size: var(--step--1); color: var(--text-2); }
 
-    /* uiverse-style cursor spotlight */
-    .feature-card::before {
+    /* ============================ bento features ============================ */
+    .bento {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 760px) {
+      .bento { grid-template-columns: repeat(2, 1fr); }
+      .bento > :first-child { grid-column: span 2; }
+    }
+    .card {
+      position: relative;
+      padding: clamp(1.4rem, 3vw, 2.2rem);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+      overflow: hidden;
+      transition: transform var(--mid) var(--ease), border-color var(--fast) var(--ease), box-shadow var(--mid) var(--ease);
+    }
+    .card:hover { transform: translateY(-3px); border-color: var(--border-strong); box-shadow: var(--shadow); }
+    /* Cursor spotlight: two custom properties, no per-card listeners leaking. */
+    .card::before {
       content: '';
       position: absolute;
       inset: 0;
-      border-radius: inherit;
+      background: radial-gradient(280px circle at var(--mx, 50%) var(--my, 0%), color-mix(in srgb, var(--accent) 16%, transparent), transparent 65%);
       opacity: 0;
-      background: radial-gradient(360px circle at var(--mx, 50%) var(--my, 50%), rgba(31, 76, 130, 0.1), transparent 60%);
-      transition: opacity 0.3s ease;
+      transition: opacity var(--mid) var(--ease);
       pointer-events: none;
     }
+    .card:hover::before { opacity: 1; }
+    .card > * { position: relative; }
 
-    .feature-card:hover {
-      transform: translateY(-6px);
-      box-shadow: var(--shadow-lift);
-      border-color: transparent;
-    }
-
-    .feature-card:hover::before {
-      opacity: 1;
-    }
-
-    .feature-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 20px;
-      font-size: 1.15rem;
-      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    .feature-card:hover .feature-icon {
-      transform: rotate(-5deg) scale(1.1);
-    }
-
-    .feature-card:nth-child(1) .feature-icon {
-      background: var(--accent-red-light);
-      color: var(--accent-red);
-    }
-
-    .feature-card:nth-child(2) .feature-icon {
-      background: var(--ink-blue-light);
-      color: var(--ink-blue);
-    }
-
-    .feature-card:nth-child(3) .feature-icon {
-      background: rgba(180, 83, 9, 0.08);
-      color: var(--amber);
-    }
-
-    .feature-card h3 {
-      font-family: var(--display);
-      font-size: 1.125rem;
-      font-weight: 600;
-      font-variation-settings: 'opsz' 60;
-      margin-bottom: 10px;
-    }
-
-    .feature-card p {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-      line-height: 1.65;
-    }
-
-    /* ===== DEMO SECTION ===== */
-    .demo-section {
-      padding: 80px 0;
-    }
-
-    .demo-section .container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 64px;
-      align-items: center;
-    }
-
-    .demo-content h2 {
-      font-family: var(--display);
-      font-size: clamp(1.5rem, 3vw, 2rem);
-      font-weight: 700;
-      font-variation-settings: 'opsz' 144;
-      line-height: 1.15;
-      letter-spacing: -0.02em;
-      margin-bottom: 16px;
-    }
-
-    .demo-content p {
-      color: var(--text-secondary);
-      font-size: 1rem;
-      line-height: 1.7;
-      margin-bottom: 24px;
-    }
-
-    .demo-list {
-      list-style: none;
-    }
-
-    .demo-list li {
-      display: flex;
-      gap: 14px;
-      align-items: flex-start;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.9375rem;
-      color: var(--text-primary);
-    }
-
-    .demo-list li:last-child {
-      border-bottom: none;
-    }
-
-    .demo-list .check {
+    .card-icon {
       display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: var(--accent-red-light);
-      color: var(--accent-red);
-      flex-shrink: 0;
-      font-size: 0.75rem;
-      margin-top: 1px;
+      align-items: center; justify-content: center;
+      width: 46px; height: 46px;
+      margin-bottom: 1rem;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--accent);
     }
+    .card h3 { margin-bottom: 0.4rem; }
+    .card p { margin: 0; font-size: var(--step-0); }
 
-    .demo-visual {
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    /* ============================ steps ============================ */
+    .steps {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: 1fr;
+      counter-reset: step;
     }
-
-    .demo-visual .document-card {
-      transform: none;
-      max-width: 420px;
-    }
-
-    .demo-visual .document-card:hover {
-      transform: perspective(800px) rotateY(1deg);
-    }
-
-    /* ===== TESTIMONIALS ===== */
-    .testimonial {
-      padding: 100px 0;
-      text-align: center;
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .testimonial blockquote {
-      max-width: 640px;
-      margin: 0 auto;
-      padding: 0 24px;
+    @media (min-width: 860px) { .steps { grid-template-columns: repeat(3, 1fr); } }
+    .step {
       position: relative;
+      padding: clamp(1.4rem, 3vw, 2rem);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
     }
-
-    .testimonial blockquote::before {
-      content: '\201C';
-      position: absolute;
-      top: -86px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-family: var(--display);
-      font-size: 9rem;
-      line-height: 1;
-      color: rgba(31, 76, 130, 0.08);
-      pointer-events: none;
+    .step-num {
+      font-family: var(--font-mono);
+      font-size: var(--step--1);
+      color: var(--accent);
+      letter-spacing: 0.12em;
     }
+    .step-icon { color: var(--accent-2); margin: 0.9rem 0 0.7rem; }
+    .step h3 { font-size: var(--step-1); margin-bottom: 0.4rem; }
+    .step p { margin: 0; font-size: var(--step--1); }
 
-    .testimonial blockquote p {
-      font-family: var(--display);
-      font-size: clamp(1.25rem, 2.5vw, 1.625rem);
-      font-weight: 400;
-      line-height: 1.6;
-      letter-spacing: -0.01em;
-      color: var(--text-primary);
-      font-variation-settings: 'opsz' 72;
-    }
+    /* ============================ demo list ============================ */
+    .demo-grid { display: grid; gap: clamp(2rem, 5vw, 3.5rem); align-items: center; grid-template-columns: 1fr; }
+    @media (min-width: 900px) { .demo-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+    .checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.85rem; }
+    .checklist li { display: flex; gap: 0.7rem; align-items: flex-start; color: var(--text-2); }
+    .checklist svg { flex: none; margin-top: 0.25rem; color: var(--accent); }
 
-    .testimonial blockquote footer {
-      margin-top: 24px;
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-    }
-
-    .testimonial blockquote footer cite {
-      font-style: normal;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    /* ===== FINAL CTA PANEL ===== */
-    .cta-section {
-      padding: 0 0 96px;
-    }
-
+    /* ============================ final cta ============================ */
     .cta-panel {
       position: relative;
-      overflow: hidden;
-      max-width: 1080px;
-      margin: 0 auto;
-      background:
-        radial-gradient(620px 320px at 10% -10%, rgba(47, 111, 179, 0.6), transparent 70%),
-        radial-gradient(560px 300px at 95% 115%, rgba(209, 52, 51, 0.35), transparent 70%),
-        var(--grad-ink-deep);
-      border-radius: 28px;
-      padding: 80px 48px 68px;
+      padding: clamp(2rem, 6vw, 4rem);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
       text-align: center;
-      box-shadow: 0 44px 90px -42px rgba(22, 50, 79, 0.85);
-    }
-
-    .cta-panel > * {
-      position: relative;
-      z-index: 1;
-    }
-
-    .cta-eyebrow {
-      display: inline-block;
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      font-weight: 500;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.55);
-      margin-bottom: 18px;
-    }
-
-    .cta-panel h2 {
-      font-family: var(--display);
-      font-size: clamp(1.75rem, 4vw, 2.75rem);
-      font-weight: 700;
-      font-variation-settings: 'opsz' 144;
-      line-height: 1.12;
-      letter-spacing: -0.02em;
-      margin-bottom: 18px;
-      color: #fff;
-    }
-
-    .cta-panel p {
-      color: rgba(255, 255, 255, 0.78);
-      font-size: 1.0625rem;
-      max-width: 460px;
-      margin: 0 auto 38px;
-      line-height: 1.7;
-    }
-
-    .cta-button {
-      position: relative;
       overflow: hidden;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 16px 36px;
-      background: var(--grad-ink);
-      color: #fff;
-      border: none;
-      border-radius: 999px;
-      font-family: var(--body);
-      font-size: 1.0625rem;
-      font-weight: 700;
-      cursor: pointer;
-      text-decoration: none;
-      box-shadow: 0 14px 28px -12px rgba(31, 76, 130, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
     }
-
-    .cta-panel .cta-button {
-      background: #fff;
-      color: var(--ink-blue);
-      box-shadow: 0 20px 44px -16px rgba(5, 15, 28, 0.65);
-    }
-
-    .cta-button::after {
+    .cta-panel::after {
       content: '';
       position: absolute;
-      top: 0;
-      left: -60%;
-      width: 45%;
-      height: 100%;
-      background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.55), transparent);
-      transform: skewX(-20deg);
-      opacity: 0;
+      inset: -40% -10% auto;
+      height: 80%;
+      background: radial-gradient(50% 100% at 50% 100%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 70%);
       pointer-events: none;
     }
+    .cta-panel > * { position: relative; }
+    .cta-note { font-size: var(--step--1); color: var(--text-2); margin: 1rem 0 0; }
 
-    .cta-panel .cta-button::after {
-      background: linear-gradient(105deg, transparent, rgba(31, 76, 130, 0.22), transparent);
-    }
+    /* ============================ footer ============================ */
+    .footer { border-top: 1px solid var(--border); padding-block: 2.5rem; margin-top: var(--section); }
+    .footer-inner { display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: center; justify-content: space-between; }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 1.2rem; list-style: none; margin: 0; padding: 0; }
+    .footer-links a { color: var(--text-2); font-size: var(--step--1); }
+    .footer-links a:hover { color: var(--text); }
+    .footer-copy { font-size: var(--step--1); color: var(--text-2); }
 
-    .cta-button span {
-      display: inline-block;
-      transition: transform 0.2s ease;
-    }
-
-    .cta-button:hover,
-    .cta-button:focus-visible {
-      transform: translateY(-2px);
-      filter: brightness(1.06);
-    }
-
-    .cta-panel .cta-button:hover,
-    .cta-panel .cta-button:focus-visible {
-      filter: none;
-      box-shadow: 0 26px 54px -18px rgba(5, 15, 28, 0.8);
-    }
-
-    .cta-button:hover::after {
-      opacity: 1;
-      animation: uiverse-sweep 0.9s ease;
-    }
-
-    .cta-button:hover span {
-      transform: translateX(4px);
-    }
-
-    .cta-note {
-      margin-top: 20px;
-      font-size: 0.8125rem;
-      color: var(--text-secondary);
-    }
-
-    .cta-panel .cta-note {
-      color: rgba(255, 255, 255, 0.55);
-      margin-bottom: 0;
-    }
-
-    /* ===== FOOTER ===== */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 40px 0;
-    }
-
-    footer .container {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 16px;
-    }
-
-    footer .logo {
-      font-size: 1rem;
-    }
-
-    footer .logo-mark {
-      width: 8px;
-      height: 8px;
-    }
-
-    footer .footer-links {
-      display: flex;
-      gap: 24px;
-      list-style: none;
-    }
-
-    footer .footer-links a {
-      text-decoration: none;
-      color: var(--text-secondary);
-      font-size: 0.8125rem;
-      transition: color 0.2s;
-    }
-
-    footer .footer-links a:hover,
-    footer .footer-links a:focus-visible {
-      color: var(--text-primary);
-    }
-
-    footer .footer-copy {
-      font-size: 0.8125rem;
-      color: var(--text-secondary);
-    }
-
-    /* ===== RESPONSIVE ===== */
     @media (max-width: 900px) {
-      .hero .container {
-        grid-template-columns: 1fr;
-        gap: 48px;
-      }
-
-      .hero-visual {
-        order: -1;
-      }
-
-      .document-card {
-        max-width: 380px;
-        margin: 0 auto;
-      }
-
-      .doc-margin-note {
+      .nav-links {
+        position: absolute;
+        top: 100%; left: 0; right: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.15rem;
+        padding: 0.75rem var(--gutter) 1.2rem;
+        background: var(--bg-soft);
+        border-bottom: 1px solid var(--border);
         display: none;
       }
-
-      .features-grid {
-        grid-template-columns: 1fr;
-        max-width: 480px;
-        margin: 0 auto;
-      }
-
-      .demo-section .container {
-        grid-template-columns: 1fr;
-        gap: 40px;
-      }
-
-      .demo-visual {
-        order: -1;
-      }
-    }
-
-    @media (max-width: 640px) {
-      :root {
-        --nav-height: 60px;
-      }
-
-      .document-card {
-        transform: none !important;
-      }
-
-      .nav-links {
-        position: fixed;
-        top: var(--nav-height);
-        left: 0;
-        right: 0;
-        background: rgba(244, 243, 239, 0.98);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        flex-direction: column;
-        padding: 24px;
-        gap: 20px;
-        border-bottom: 1px solid var(--border);
-        transform: translateY(-100%);
-        opacity: 0;
-        pointer-events: none;
-        transition: transform 0.3s ease, opacity 0.3s ease;
-      }
-
-      .nav-links.open {
-        transform: translateY(0);
-        opacity: 1;
-        pointer-events: auto;
-      }
-
-      .nav-toggle {
-        display: flex;
-      }
-
-      .lang-switch {
-        margin-left: auto;
-        margin-right: 6px;
-      }
-
-      .hero {
-        padding: calc(var(--nav-height) + 32px) 0 48px;
-      }
-
-      .document-card {
-        padding: 24px 20px;
-        max-width: 100%;
-      }
-
-      .hero-cta-secondary {
-        margin-left: 8px;
-        padding: 14px 16px;
-      }
-
-      .trust-bar .container {
-        gap: 32px;
-      }
-
-      .cta-section {
-        padding: 0 0 56px;
-      }
-
-      .cta-panel {
-        padding: 56px 22px 48px;
-        border-radius: 22px;
-      }
-
-      footer .container {
-        flex-direction: column;
-        text-align: center;
-      }
-
-      .testimonial {
-        padding: 60px 0;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *,
-      *::before,
-      *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-      }
-
-      .fade-in {
-        opacity: 1;
-        transform: none;
-      }
-
-      .doc-underline::after,
-      .doc-highlight::before,
-      .doc-margin-note,
-      .doc-stamp,
-      .doc-circle {
-        animation: none !important;
-        opacity: 1;
-        transform: none;
-      }
-
-      .doc-stamp {
-        opacity: 0.7;
-        transform: translate(-50%, -50%) rotate(-12deg) scale(1);
-      }
-
-      .doc-margin-note {
-        opacity: 1;
-        transform: translateX(calc(100% + 8px));
-      }
-
-      .doc-underline::after {
-        transform: scaleX(1);
-      }
-
-      .doc-highlight::before {
-        transform: scaleX(1);
-      }
-
-      .doc-circle {
-        opacity: 0.4;
-        transform: scale(1);
-      }
-
-      .feature-card:hover {
-        transform: none;
-      }
-    }
-
-    /* ===== FOCUS STYLES ===== */
-    a:focus-visible,
-    button:focus-visible {
-      outline: 2px solid var(--ink-blue);
-      outline-offset: 2px;
-      border-radius: 4px;
-    }
-
-    /* Selection */
-    ::selection {
-      background: var(--accent-red-light);
-      color: var(--accent-red);
+      .nav-links.is-open { display: flex; }
+      .nav-links a { padding: 0.75rem 0.6rem; }
+      .nav-toggle { display: inline-flex; }
+      .nav-tools { margin-left: auto; }
+      .theme-btn span:not([data-icon]) { display: none; }
     }
   </style>
 </head>
-<body data-title-key="ln.page.title">
 
-  <!-- ===== NAV ===== -->
-  <nav aria-label="Main navigation">
-    <div class="container">
-      <a href="#" class="logo" aria-label="Folio home" data-i18n-aria="ln.logo.aria">
-        <span class="logo-mark" aria-hidden="true"></span>
+<body data-title-key="ln.page.title">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- ============================ NAV ============================ -->
+  <nav class="nav">
+    <div class="shell nav-inner">
+      <a class="brand" href="#hero" data-i18n-aria="ln.logo.aria">
+        <span class="brand-mark" aria-hidden="true"></span>
         Folio
       </a>
 
       <ul class="nav-links" id="navLinks">
         <li><a href="#features" data-i18n="ln.nav.features">Features</a></li>
+        <li><a href="#how" data-i18n="ln.nav.how">How it works</a></li>
         <li><a href="app.html" data-i18n="ln.nav.editor">PDF Editor</a></li>
-        <li><a href="#testimonial" data-i18n="ln.nav.testimonials">Testimonials</a></li>
-        <li><a href="#cta" class="nav-cta"><span data-i18n="ln.nav.cta">Try it</span> <span aria-hidden="true">&rarr;</span></a></li>
+        <li><a href="#cta" data-i18n="ln.nav.cta">Try it</a></li>
       </ul>
 
-      <div class="lang-switch" role="group" aria-label="Language">
-        <button type="button" class="lang-btn" data-lang="en" aria-pressed="false">EN</button>
-        <button type="button" class="lang-btn" data-lang="it" aria-pressed="false">IT</button>
-      </div>
+      <div class="nav-tools">
+        <div class="theme-switch" role="group" aria-label="Theme" data-i18n-aria="ln.theme.label" id="themeSwitch">
+          <button type="button" class="theme-btn" data-theme="aurora" aria-pressed="true">
+            <span data-icon="sparkles" data-icon-size="16"></span>
+            <span data-i18n="ln.theme.aurora">Aurora</span>
+          </button>
+          <button type="button" class="theme-btn" data-theme="neon" aria-pressed="false">
+            <span data-icon="zap" data-icon-size="16"></span>
+            <span data-i18n="ln.theme.neon">Neon</span>
+          </button>
+          <button type="button" class="theme-btn" data-theme="carta" aria-pressed="false">
+            <span data-icon="file-text" data-icon-size="16"></span>
+            <span data-i18n="ln.theme.carta">Paper</span>
+          </button>
+          <button type="button" class="theme-btn" data-theme="bento" aria-pressed="false">
+            <span data-icon="contrast" data-icon-size="16"></span>
+            <span data-i18n="ln.theme.bento">Bento</span>
+          </button>
+        </div>
 
-      <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation menu" aria-expanded="false">
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button type="button" class="lang-btn" data-lang="en" aria-pressed="false">EN</button>
+          <button type="button" class="lang-btn" data-lang="it" aria-pressed="false">IT</button>
+        </div>
+
+        <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="navLinks">
+          <span data-icon="menu" data-icon-size="20"></span>
+        </button>
+      </div>
     </div>
   </nav>
 
-  <!-- ===== HERO ===== -->
-  <section class="hero" id="hero">
-    <div class="container">
-      <div class="hero-content">
-        <h1 class="fade-in visible" data-i18n-html="ln.hero.titleHtml">
-          Mark up your PDFs with<br />
-          <span class="highlight">surgical precision</span>
-        </h1>
-        <p class="hero-sub fade-in visible fade-in-delay-1" data-i18n="ln.hero.sub">
-          Folio gives you the tools to annotate, edit, and sign documents
-          with the care they deserve. Everything stays in your browser.
-        </p>
-        <div class="fade-in visible fade-in-delay-2">
-          <a href="app.html" class="hero-cta" data-i18n-html="ln.hero.ctaMainHtml">
-            Start for free <span aria-hidden="true">&rarr;</span>
-          </a>
-          <a href="app.html" class="hero-cta-secondary" data-i18n-html="ln.hero.ctaAltHtml">
-            Open PDF Editor <span aria-hidden="true">&rarr;</span>
-          </a>
-        </div>
-        <div class="hero-trust fade-in visible fade-in-delay-3">
-          <div class="hero-trust-avatars" aria-hidden="true">
-            <span>JD</span>
-            <span>AK</span>
-            <span>MR</span>
-            <span style="background:#787C82;font-size:0.625rem;">+</span>
-          </div>
-          <span data-i18n="ln.hero.trust">Loved by teams that work with documents every day</span>
-        </div>
-      </div>
+  <main id="main">
+    <!-- ============================ HERO ============================ -->
+    <section class="hero" id="hero">
+      <div class="shell hero-grid">
+        <div>
+          <span class="eyebrow reveal" style="--d:0">
+            <span data-icon="wand" data-icon-size="16"></span>
+            <span data-i18n="ln.cta.eyebrow">100% free — no sign-up</span>
+          </span>
 
-      <!-- ===== SIGNATURE: Annotated Document ===== -->
-      <div class="hero-visual fade-in visible fade-in-delay-1" role="img" aria-label="Interactive document preview showing annotations" data-i18n-aria="ln.hero.docAria">
-        <div class="document-card" id="docPreview" aria-hidden="true">
-          <div class="document-header">
-            <h3>Service Agreement</h3>
-            <span class="doc-number">FOL-2024-0042</span>
-          </div>
-          <div class="document-body">
-            <p>
-              This Agreement is entered into between                <span class="doc-annotate doc-underline" id="anno1" tabindex="0" role="button">
-                <strong>the Licensor</strong>
-                <span class="doc-tooltip">Define party</span>
-              </span>
-              and the Licensee as of the Effective Date.
-            </p>
-            <p>
-              The Licensor grants the Licensee                <span class="doc-annotate doc-highlight" id="anno2" tabindex="0" role="button">
-                exclusive rights to distribute
-                <span class="doc-tooltip">Clarify territory</span>
-              </span>
-              the Work in all formats, subject to the terms herein.
-            </p>
-            <p>
-              <span class="doc-annotate" id="anno4" style="position:relative;" tabindex="0" role="button">
-                <span class="doc-circle" id="circleAnno"></span>
-                Section 4.2
-                <span class="doc-tooltip">Review terms</span>
-              </span>
-              governs the royalty structure for subsidiary
-              licensing arrangements.
-            </p>
-            <p>
-              Either party may terminate this Agreement upon
-              thirty (30) days written notice.
-            </p>
+          <h1 class="reveal" style="--d:1" data-i18n-html="ln.hero.titleHtml">
+            Mark up your PDFs with<br /><span class="highlight">surgical precision</span>
+          </h1>
+
+          <p class="lede reveal" style="--d:2" data-i18n="ln.hero.sub">
+            Folio gives you the tools to annotate, edit, and sign documents
+            with the care they deserve. Everything stays in your browser.
+          </p>
+
+          <div class="cta-row reveal" style="--d:3">
+            <a class="btn btn-primary hero-cta" href="app.html" data-magnetic>
+              <span data-i18n="ln.hero.ctaMain">Start for free</span>
+              <span data-icon="arrow-right" data-icon-size="18"></span>
+            </a>
+            <a class="btn btn-ghost" href="#how">
+              <span data-i18n="ln.nav.how">How it works</span>
+              <span data-icon="arrow-down" data-icon-size="18"></span>
+            </a>
           </div>
 
-          <!-- Margin note -->
-          <div class="doc-margin-note" id="marginNote">
-            <div class="doc-margin-note-inner">
-              <span class="arrow" aria-hidden="true">&#8592;</span>
-              Define scope of IP rights
+          <div class="badges reveal" style="--d:4">
+            <span class="badge"><span data-icon="shield" data-icon-size="15"></span><span data-i18n="ln.hero.badge.browser">Runs in your browser</span></span>
+            <span class="badge"><span data-icon="zap" data-icon-size="15"></span><span data-i18n="ln.hero.badge.free">Free, no sign-up</span></span>
+            <span class="badge"><span data-icon="check" data-icon-size="15"></span><span data-i18n="ln.hero.badge.install">Nothing to install</span></span>
+          </div>
+        </div>
+
+        <div class="doc-stage reveal" style="--d:2" data-parallax="0.05">
+          <div class="doc" id="docPreview" role="img" aria-label="Interactive document preview showing annotations" data-i18n-aria="ln.hero.docAria">
+            <div class="doc-head">
+              <h3>Service Agreement</h3>
+              <span class="doc-ref">FOL-2026-0042</span>
             </div>
+            <div class="doc-body">
+              <p>
+                This Agreement is entered into between
+                <span class="anno" data-anno="1"><span class="anno-line">the Licensor</span><span class="anno-tip">Define party</span></span>
+                and the Licensee as of the Effective Date.
+              </p>
+              <p>
+                The Licensor grants the Licensee
+                <span class="anno" data-anno="2"><span class="anno-mark">exclusive rights to distribute</span><span class="anno-tip">Clarify territory</span></span>
+                the Work in all formats, subject to the terms herein.
+              </p>
+              <p>
+                <span class="anno" data-anno="3"><span class="anno-line">Section 4.2</span><span class="anno-tip">Review terms</span></span>
+                governs the royalty structure for subsidiary licensing arrangements.
+              </p>
+              <p>Either party may terminate this Agreement upon thirty (30) days written notice.</p>
+              <span class="doc-note" data-note="1">
+                <span data-icon="arrow-left" data-icon-size="14"></span>
+                Define scope of IP rights
+              </span>
+            </div>
+            <div class="doc-stamp" id="docStamp">Reviewed</div>
           </div>
-
-          <!-- Stamp -->
-          <div class="doc-stamp" id="docStamp">Reviewed</div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ===== TRUST BAR ===== -->
-  <section class="trust-bar fade-in" aria-label="Trusted by">
-    <div class="container">
-      <span class="trust-bar-label" data-i18n="ln.trust.label">Used by teams at</span>          <span class="trust-logo">Design</span>
-          <span class="trust-logo">Legal</span>
-          <span class="trust-logo">Research</span>
-          <span class="trust-logo">Product</span>
-          <span class="trust-logo">Finance</span>
-    </div>
-  </section>
-
-  <!-- ===== FEATURES ===== -->
-  <section class="features" id="features">
-    <div class="container">
-      <div class="features-header fade-in">
-        <span class="section-label" data-i18n="ln.features.label">Capabilities</span>
-        <h2 data-i18n="ln.features.title">Everything you need to work with PDFs</h2>
-        <p data-i18n="ln.features.sub">Annotate, edit and sign in one workflow — 100% free, no limits, nothing to install.</p>
+    <!-- ============================ STATS ============================ -->
+    <section class="shell reveal">
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-num" data-count="37">0</span>
+          <span class="stat-label" data-i18n="ln.stats.tools">PDF tools</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num" data-count="0">0</span>
+          <span class="stat-label" data-i18n="ln.stats.install">To install</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num" data-count="100" data-suffix="%">0</span>
+          <span class="stat-label" data-i18n="ln.stats.free">Free, forever</span>
+        </div>
       </div>
+    </section>
 
-      <div class="features-grid">
-        <article class="feature-card fade-in fade-in-delay-1">
-          <div class="feature-icon" aria-hidden="true">&#9998;</div>
-          <h3 data-i18n="ln.feat.annotate.title">Annotate</h3>
-          <p data-i18n="ln.feat.annotate.desc">Highlight, underline, strike through, and add margin notes. Every mark stays crisp and stays yours.</p>
-        </article>
+    <!-- ============================ FEATURES ============================ -->
+    <section class="section" id="features">
+      <div class="shell">
+        <div class="reveal">
+          <span class="eyebrow" data-i18n="ln.features.label">Capabilities</span>
+          <h2 data-i18n="ln.features.title">Everything you need to work with PDFs</h2>
+          <p class="lede" data-i18n="ln.features.sub">Annotate, edit and sign in one workflow — 100% free, no limits, nothing to install.</p>
+        </div>
 
-        <article class="feature-card fade-in fade-in-delay-2">
-          <div class="feature-icon" aria-hidden="true">&#9997;</div>
-          <h3 data-i18n="ln.feat.edit.title">Edit</h3>
-          <p data-i18n="ln.feat.edit.desc">Change text, rearrange pages, and adjust layouts without leaving the document. Full fidelity, always.</p>
-        </article>
-
-        <article class="feature-card fade-in fade-in-delay-3">
-          <div class="feature-icon" aria-hidden="true">&#10003;</div>
-          <h3 data-i18n="ln.feat.sign.title">Sign</h3>
-          <p data-i18n="ln.feat.sign.desc">Draw, type, or upload your signature. Certified signatures that hold up anywhere they're sent.</p>
-        </article>
+        <div class="bento" style="margin-top: 2.5rem">
+          <article class="card reveal" style="--d:0">
+            <span class="card-icon"><span data-icon="highlight" data-icon-size="24"></span></span>
+            <h3 data-i18n="ln.feat.annotate.title">Annotate</h3>
+            <p data-i18n="ln.feat.annotate.desc">Highlight, underline, strike through, and add margin notes. Every mark stays crisp and stays yours.</p>
+          </article>
+          <article class="card reveal" style="--d:1">
+            <span class="card-icon"><span data-icon="pen" data-icon-size="24"></span></span>
+            <h3 data-i18n="ln.feat.edit.title">Edit</h3>
+            <p data-i18n="ln.feat.edit.desc">Change text, rearrange pages, and adjust layouts without leaving the document. Full fidelity, always.</p>
+          </article>
+          <article class="card reveal" style="--d:2">
+            <span class="card-icon"><span data-icon="signature" data-icon-size="24"></span></span>
+            <h3 data-i18n="ln.feat.sign.title">Sign</h3>
+            <p data-i18n="ln.feat.sign.desc">Draw, type, or upload your signature. Certified signatures that hold up anywhere they're sent.</p>
+          </article>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ===== DEMO SECTION ===== -->
-  <section class="demo-section" id="demo">
-    <div class="container">
-      <div class="demo-content fade-in">
-        <span class="section-label" data-i18n="ln.demo.label">Workflow</span>
-        <h2 data-i18n="ln.demo.title">Annotations that look like they were made on paper</h2>
-        <p data-i18n="ln.demo.p">
-          Every highlight, underline, and margin note renders at full resolution.
-          Export with annotations baked in or send a clean copy — your choice.
-        </p>
-        <ul class="demo-list">
-          <li>
-            <span class="check" aria-hidden="true">&#10003;</span>
-            <span data-i18n-html="ln.demo.item1"><strong>Layer-based</strong> — annotations sit on their own layer until you're ready to flatten</span>
-          </li>
-          <li>
-            <span class="check" aria-hidden="true">&#10003;</span>
-            <span data-i18n-html="ln.demo.item2"><strong>Collaborative</strong> — share a document and see each other's marks in real time</span>
-          </li>
-          <li>
-            <span class="check" aria-hidden="true">&#10003;</span>
-            <span data-i18n-html="ln.demo.item3"><strong>Export ready</strong> — PDF/A, flattened, or annotated — whichever your recipient needs</span>
-          </li>
+    <!-- ============================ HOW IT WORKS ============================ -->
+    <section class="section" id="how">
+      <div class="shell">
+        <div class="reveal">
+          <span class="eyebrow" data-i18n="ln.how.label">How it works</span>
+          <h2 data-i18n="ln.how.title">Three steps, no account</h2>
+          <p class="lede" data-i18n="ln.how.sub">Open the editor, pick a tool, and get your file back. Nothing to install and no sign-up.</p>
+        </div>
+
+        <div class="steps" style="margin-top: 2.5rem">
+          <article class="step reveal" style="--d:0">
+            <span class="step-num">01</span>
+            <div class="step-icon"><span data-icon="upload" data-icon-size="26"></span></div>
+            <h3 data-i18n="ln.how.step1.title">Open your PDF</h3>
+            <p data-i18n="ln.how.step1.desc">Drop a file into the editor. It is read in the browser, so editing it never uploads it.</p>
+          </article>
+          <article class="step reveal" style="--d:1">
+            <span class="step-num">02</span>
+            <div class="step-icon"><span data-icon="cursor" data-icon-size="26"></span></div>
+            <h3 data-i18n="ln.how.step2.title">Click the text you want to change</h3>
+            <p data-i18n="ln.how.step2.desc">The page renders with its real text on top: click a word and type over it, keeping its size and font.</p>
+          </article>
+          <article class="step reveal" style="--d:2">
+            <span class="step-num">03</span>
+            <div class="step-icon"><span data-icon="download" data-icon-size="26"></span></div>
+            <h3 data-i18n="ln.how.step3.title">Export the result</h3>
+            <p data-i18n="ln.how.step3.desc">Download the edited PDF. The file on your device stays untouched.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ WORKFLOW DETAIL ============================ -->
+    <section class="section" id="workflow" style="padding-top: 0">
+      <div class="shell demo-grid">
+        <div class="reveal">
+          <span class="eyebrow" data-i18n="ln.demo.label">Workflow</span>
+          <h2 data-i18n="ln.demo.title">Annotations that look like they were made on paper</h2>
+          <p data-i18n="ln.demo.p">Every highlight, underline, and margin note renders at full resolution. Export with annotations baked in or send a clean copy — your choice.</p>
+        </div>
+        <ul class="checklist reveal" style="--d:1">
+          <li><span data-icon="layers" data-icon-size="18"></span><span data-i18n-html="ln.demo.item1"><strong>Layer-based</strong> — annotations sit on their own layer until you're ready to flatten</span></li>
+          <li><span data-icon="refresh" data-icon-size="18"></span><span data-i18n-html="ln.demo.item2"><strong>Consistent</strong> — the same result in every browser, with no plugin and no install</span></li>
+          <li><span data-icon="download" data-icon-size="18"></span><span data-i18n-html="ln.demo.item3"><strong>Export ready</strong> — PDF/A, flattened, or annotated — whichever your recipient needs</span></li>
         </ul>
       </div>
+    </section>
 
-      <div class="demo-visual fade-in fade-in-delay-1">
-        <div class="document-card" style="padding:24px 28px;">
-          <div class="document-header">
-            <h3>Research Notes</h3>
-            <span class="doc-number">v2.3</span>
-          </div>
-          <div class="document-body">
-            <p>
-              The <span style="background:rgba(209,52,51,0.12);padding:0 2px;border-radius:1px;">primary endpoint</span>
-              showed a <span style="text-decoration:underline;text-decoration-color:var(--accent-red);text-decoration-style:wavy;text-underline-offset:2px;">statistically significant</span>
-              improvement over the control cohort.
-            </p>
-            <p style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-family:var(--mono);font-size:0.6875rem;color:var(--text-secondary);">
-              [1] See Appendix C for full methodology<br />
-              [2] Revision requested by review board
-            </p>
-          </div>
+    <!-- ============================ FINAL CTA ============================ -->
+    <section class="section" id="cta" style="padding-top: 0">
+      <div class="shell">
+        <div class="cta-panel reveal">
+          <span class="eyebrow" data-i18n="ln.cta.eyebrow">100% free — no sign-up</span>
+          <h2 data-i18n-html="ln.cta.titleHtml">Your documents,<br />marked up beautifully</h2>
+          <p class="lede" style="margin-inline: auto" data-i18n="ln.cta.sub">No sign-up, no uploads, no limits. Everything runs in your browser and your files never leave your device.</p>
+          <a class="btn btn-primary" href="app.html" data-magnetic style="margin-top: 1.5rem">
+            <span data-i18n="ln.cta.btn">Open the PDF editor</span>
+            <span data-icon="arrow-right" data-icon-size="18"></span>
+          </a>
+          <p class="cta-note" data-i18n="ln.cta.note">Works in Chrome, Firefox, Safari, and Edge. Nothing to install.</p>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </main>
 
-  <!-- ===== TESTIMONIAL ===== -->
-  <section class="testimonial" id="testimonial">
-    <div class="container">
-      <blockquote class="fade-in">
-        <p data-i18n="ln.quote.text">&ldquo;We review dozens of contracts a week. Folio turned that from a chore into something we actually don't mind doing. The annotation tools feel like they were built by people who've done this work.&rdquo;</p>
-        <footer>
-          <cite>Legal Operations</cite> — Jordan Chen
-        </footer>
-      </blockquote>
-    </div>
-  </section>
-
-  <!-- ===== FINAL CTA ===== -->
-  <section class="cta-section" id="cta">
-    <div class="container">
-      <div class="cta-panel fade-in">
-        <span class="cta-eyebrow" data-i18n="ln.cta.eyebrow">100% free &mdash; no sign-up</span>
-        <h2 data-i18n-html="ln.cta.titleHtml">Your documents,<br />marked up beautifully</h2>
-        <p data-i18n="ln.cta.sub">No sign-up, no uploads, no limits. Everything runs in your browser and your files never leave your device.</p>
-        <a href="app.html" class="cta-button" data-i18n-html="ln.cta.btnHtml">Open the PDF editor <span aria-hidden="true">&rarr;</span></a>
-        <p class="cta-note" data-i18n="ln.cta.note">Works in Chrome, Firefox, Safari, and Edge. Nothing to install.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== FOOTER ===== -->
-  <footer>
-    <div class="container">
-      <a href="#" class="logo" aria-label="Folio home" data-i18n-aria="ln.logo.aria">
-        <span class="logo-mark" aria-hidden="true"></span>
+  <!-- ============================ FOOTER ============================ -->
+  <footer class="footer">
+    <div class="shell footer-inner">
+      <a class="brand" href="#hero" data-i18n-aria="ln.logo.aria">
+        <span class="brand-mark" aria-hidden="true"></span>
         Folio
       </a>
       <ul class="footer-links">
@@ -1676,169 +899,259 @@
     </div>
   </footer>
 
-  <!-- ===== JAVASCRIPT ===== -->
   <script src="i18n.js"></script>
+  <script src="icons.js"></script>
   <script>
-    // === Mobile nav toggle ===
-    const navToggle = document.getElementById('navToggle');
-    const navLinks = document.getElementById('navLinks');
+    (function () {
+      'use strict';
 
-    navToggle.addEventListener('click', () => {
-      const isOpen = navLinks.classList.toggle('open');
-      navToggle.setAttribute('aria-expanded', isOpen);
-    });
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var THEMES = ['aurora', 'neon', 'carta', 'bento'];
+      var THEME_COLOR = { aurora: '#070A16', neon: '#04050A', carta: '#FAF7F0', bento: '#F5F5F7' };
 
-    // Close nav on link click (mobile)
-    navLinks.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', () => {
-        navLinks.classList.remove('open');
-        navToggle.setAttribute('aria-expanded', 'false');
-      });
-    });
+      function remember(key, value) {
+        try {
+          if (value === undefined) return window.localStorage.getItem(key);
+          window.localStorage.setItem(key, value);
+        } catch (e) { /* private mode: the theme just will not persist */ }
+        return null;
+      }
 
-    // === Scroll-triggered fade-ins ===
-    const fadeEls = document.querySelectorAll('.fade-in:not(.visible)');
+      /* ============ theme switch ============ */
+      var themeBtns = document.querySelectorAll('.theme-btn');
+      var themeMeta = document.getElementById('metaThemeColor');
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry, i) => {
-        if (entry.isIntersecting) {
-          // Stagger based on existing delay class or index
-          entry.target.classList.add('visible');
-          observer.unobserve(entry.target);
+      function setTheme(name) {
+        if (THEMES.indexOf(name) < 0) name = 'aurora';
+        document.documentElement.setAttribute('data-theme', name);
+        remember('folio.theme', name);
+        if (themeMeta) themeMeta.setAttribute('content', THEME_COLOR[name]);
+        for (var i = 0; i < themeBtns.length; i++) {
+          var on = themeBtns[i].getAttribute('data-theme') === name;
+          themeBtns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
         }
-      });
-    }, {
-      threshold: 0.1,
-      rootMargin: '0px 0px -40px 0px'
-    });
+      }
 
-    fadeEls.forEach(el => observer.observe(el));
+      for (var t = 0; t < themeBtns.length; t++) {
+        themeBtns[t].addEventListener('click', function () {
+          setTheme(this.getAttribute('data-theme'));
+        });
+      }
+      setTheme(document.documentElement.getAttribute('data-theme') || 'aurora');
 
-    // === Document annotation animation sequence ===
-    // Set up the annotation animations when the hero comes into view
-    const docSection = document.querySelector('.hero-visual');
+      /* ============ scroll reveals ============ */
+      var reveals = [].slice.call(document.querySelectorAll('.reveal'));
+      if (reduceMotion || !('IntersectionObserver' in window)) {
+        reveals.forEach(function (el) { el.classList.add('is-in'); });
+      } else {
+        var revealObserver = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add('is-in');
+            revealObserver.unobserve(entry.target);
+          });
+        }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+        reveals.forEach(function (el) { revealObserver.observe(el); });
 
-    const docObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          animateAnnotations();
-          docObserver.unobserve(entry.target);
+        /* the stat numbers animate on their own trigger, so a row of them
+           counts in view rather than the moment the section scrolls past */
+        var statNums = document.querySelectorAll('.stat-num');
+        var statObserver = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return;
+            countUp(entry.target);
+            statObserver.unobserve(entry.target);
+          });
+        }, { threshold: 0.4 });
+        for (var s = 0; s < statNums.length; s++) statObserver.observe(statNums[s]);
+      }
+
+      function countUp(el) {
+        if (el.getAttribute('data-done') === '1') return;
+        el.setAttribute('data-done', '1');
+        var target = parseInt(el.getAttribute('data-count'), 10) || 0;
+        var suffix = el.getAttribute('data-suffix') || '';
+        if (reduceMotion) { el.textContent = target + suffix; return; }
+        var started = null;
+        var DURATION = 1200;
+        function frame(now) {
+          if (started === null) started = now;
+          var p = Math.min(1, (now - started) / DURATION);
+          var eased = 1 - Math.pow(1 - p, 3);
+          el.textContent = Math.round(target * eased) + suffix;
+          if (p < 1) window.requestAnimationFrame(frame);
         }
-      });
-    }, { threshold: 0.3 });
-
-    docObserver.observe(docSection);
-
-    function animateAnnotations() {
-      const underline = document.getElementById('anno1');
-      const highlight = document.getElementById('anno2');
-      const marginNote = document.getElementById('marginNote');
-      const stamp = document.getElementById('docStamp');
-      const circle = document.getElementById('circleAnno');
-
-      // Sequential reveals
-      setTimeout(() => underline.classList.add('visible'), 400);
-      setTimeout(() => highlight.classList.add('visible'), 900);
-      setTimeout(() => marginNote.classList.add('visible'), 1300);
-      setTimeout(() => stamp.classList.add('visible'), 2000);
-      setTimeout(() => circle.classList.add('visible'), 2600);
-    }
-
-    // Also run immediately if hero is already visible
-    if (docSection.getBoundingClientRect().top < window.innerHeight) {
-      // Small delay for initial render
-      setTimeout(animateAnnotations, 600);
-    }
-
-    // === Smooth parallax document tilt ===
-    const docCard = document.querySelector('.hero-visual .document-card');
-    if (docCard && window.matchMedia('(prefers-reduced-motion: reduce)').matches === false) {
-      docCard.addEventListener('mousemove', (e) => {
-        const rect = docCard.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        const rotateX = ((y - centerY) / centerY) * -3;
-        const rotateY = ((x - centerX) / centerX) * 3;
-        docCard.style.transform = `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-      });
-
-      docCard.addEventListener('mouseleave', () => {
-        docCard.style.transform = 'perspective(800px) rotateY(-1deg)';
-      });
-    }
-
-    // === Feature-card cursor spotlight (uiverse-style) ===
-    const spotlightCards = document.querySelectorAll('.feature-card');
-    spotlightCards.forEach(card => {
-      card.addEventListener('mousemove', (e) => {
-        const r = card.getBoundingClientRect();
-        card.style.setProperty('--mx', ((e.clientX - r.left) / r.width) * 100 + '%');
-        card.style.setProperty('--my', ((e.clientY - r.top) / r.height) * 100 + '%');
-      });
-    });
-
-    // === Language switch (EN / IT) ===
-    function applyLanguage(lang) {
-      document.documentElement.lang = lang;
-      const titleKey = document.body.getAttribute('data-title-key');
-      if (titleKey) document.title = FolioI18N.t(titleKey);
-
-      const txtEls = document.querySelectorAll('[data-i18n]');
-      for (let i = 0; i < txtEls.length; i++) {
-        txtEls[i].textContent = FolioI18N.t(txtEls[i].getAttribute('data-i18n'));
+        window.requestAnimationFrame(frame);
       }
-      const htmlEls = document.querySelectorAll('[data-i18n-html]');
-      for (let j = 0; j < htmlEls.length; j++) {
-        htmlEls[j].innerHTML = FolioI18N.t(htmlEls[j].getAttribute('data-i18n-html'));
-      }
-      const ariaEls = document.querySelectorAll('[data-i18n-aria]');
-      for (let a = 0; a < ariaEls.length; a++) {
-        ariaEls[a].setAttribute('aria-label', FolioI18N.t(ariaEls[a].getAttribute('data-i18n-aria')));
-      }
-    const btns = document.querySelectorAll('.lang-btn');
-    for (let b = 0; b < btns.length; b++) {
-      const on = btns[b].getAttribute('data-lang') === lang;
-      btns[b].classList.toggle('active', on);
-      btns[b].setAttribute('aria-pressed', on ? 'true' : 'false');
-    }
 
-    // Keep og / meta tags and the URL in sync with the chosen language
-    const locale = lang === 'it' ? 'it_IT' : 'en_US';
-    const setMeta = (sel, content) => {
-      const el = document.querySelector(sel);
-      if (el) el.setAttribute('content', content);
-    };
-    setMeta('meta[property="og:locale"]', locale);
-    setMeta('meta[property="og:title"]', FolioI18N.t('ln.page.title'));
-    setMeta('meta[property="og:description"]', FolioI18N.t('ln.meta.desc'));
-    setMeta('meta[name="description"]', FolioI18N.t('ln.meta.desc'));
-    FolioI18N.syncUrl(lang);
-    const links = document.querySelectorAll('a[href]');
-    for (let li = 0; li < links.length; li++) {
-      let href = links[li].getAttribute('href');
-      if (!href || href.charAt(0) === '#' || /^[a-z]+:/i.test(href)) continue;
-      const hashIdx = href.indexOf('#');
-      const hash = hashIdx >= 0 ? href.slice(hashIdx) : '';
-      let path = hashIdx >= 0 ? href.slice(0, hashIdx) : href;
-      path = path.replace(/[?&]lang=(en|it)/, '');
-      if (lang === 'it') {
-        path += (path.indexOf('?') >= 0 ? '&' : '?') + 'lang=it';
+      /* ============ document mockup: annotation sequence ============ */
+      var doc = document.getElementById('docPreview');
+      if (doc) {
+        var marks = [
+          { sel: '[data-anno="1"] .anno-line', at: 250 },
+          { sel: '[data-anno="2"] .anno-mark', at: 750 },
+          { sel: '[data-note="1"]', at: 1150 },
+          { sel: '[data-anno="3"] .anno-line', at: 1550 },
+          { sel: '#docStamp', at: 1950 }
+        ];
+        function playAnnotations() {
+          if (reduceMotion) {
+            marks.forEach(function (m) {
+              var el = doc.querySelector(m.sel);
+              if (el) el.classList.add('is-on');
+            });
+            doc.querySelectorAll('.anno').forEach(function (a) { a.setAttribute('data-on', '1'); });
+            return;
+          }
+          marks.forEach(function (m) {
+            window.setTimeout(function () {
+              var el = doc.querySelector(m.sel);
+              if (el) el.classList.add('is-on');
+              var holder = el && el.closest ? el.closest('.anno') : null;
+              if (holder) holder.setAttribute('data-on', '1');
+            }, m.at);
+          });
+        }
+        if ('IntersectionObserver' in window) {
+          var docObserver = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) return;
+              playAnnotations();
+              docObserver.unobserve(entry.target);
+            });
+          }, { threshold: 0.35 });
+          docObserver.observe(doc);
+        } else {
+          playAnnotations();
+        }
       }
-      links[li].setAttribute('href', path + hash);
-    }
-  }
 
-    const langBtns = document.querySelectorAll('.lang-btn');
-    for (let lb = 0; lb < langBtns.length; lb++) {
-      langBtns[lb].addEventListener('click', function () {
-        var lang = this.getAttribute('data-lang');
-        FolioI18N.set(lang);
-        applyLanguage(lang);
-      });
-    }
-    applyLanguage(FolioI18N.current());
+      /* ============ decorative motion: parallax, magnetics, spotlight ============ */
+      if (!reduceMotion) {
+        var parallax = [].slice.call(document.querySelectorAll('[data-parallax]'));
+        if (parallax.length) {
+          var queued = false;
+          window.addEventListener('scroll', function () {
+            if (queued) return;
+            queued = true;
+            window.requestAnimationFrame(function () {
+              var y = window.scrollY || window.pageYOffset;
+              parallax.forEach(function (el) {
+                var speed = parseFloat(el.getAttribute('data-parallax')) || 0.04;
+                el.style.transform = 'translate3d(0,' + (y * speed).toFixed(2) + 'px,0)';
+              });
+              queued = false;
+            });
+          }, { passive: true });
+        }
+
+        [].slice.call(document.querySelectorAll('[data-magnetic]')).forEach(function (btn) {
+          btn.addEventListener('mousemove', function (e) {
+            var r = btn.getBoundingClientRect();
+            var dx = (e.clientX - r.left - r.width / 2) / r.width;
+            var dy = (e.clientY - r.top - r.height / 2) / r.height;
+            btn.style.transform = 'translate(' + (dx * 7).toFixed(1) + 'px,' + (dy * 5).toFixed(1) + 'px)';
+          });
+          btn.addEventListener('mouseleave', function () { btn.style.transform = ''; });
+        });
+
+        [].slice.call(document.querySelectorAll('.card')).forEach(function (card) {
+          card.addEventListener('mousemove', function (e) {
+            var r = card.getBoundingClientRect();
+            card.style.setProperty('--mx', ((e.clientX - r.left) / r.width) * 100 + '%');
+            card.style.setProperty('--my', ((e.clientY - r.top) / r.height) * 100 + '%');
+          });
+        });
+      }
+
+      /* ============ mobile nav ============ */
+      var navToggle = document.getElementById('navToggle');
+      var navLinks = document.getElementById('navLinks');
+      if (navToggle && navLinks) {
+        navToggle.addEventListener('click', function () {
+          var open = navLinks.classList.toggle('is-open');
+          navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+        navLinks.querySelectorAll('a').forEach(function (link) {
+          link.addEventListener('click', function () {
+            navLinks.classList.remove('is-open');
+            navToggle.setAttribute('aria-expanded', 'false');
+          });
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && navLinks.classList.contains('is-open')) {
+            navLinks.classList.remove('is-open');
+            navToggle.setAttribute('aria-expanded', 'false');
+            navToggle.focus();
+          }
+        });
+      }
+
+      /* ============ language (EN / IT) ============ */
+      function applyLanguage(lang) {
+        document.documentElement.lang = lang;
+        var titleKey = document.body.getAttribute('data-title-key');
+        if (titleKey) document.title = FolioI18N.t(titleKey);
+
+        var txtEls = document.querySelectorAll('[data-i18n]');
+        for (var i = 0; i < txtEls.length; i++) {
+          txtEls[i].textContent = FolioI18N.t(txtEls[i].getAttribute('data-i18n'));
+        }
+        var htmlEls = document.querySelectorAll('[data-i18n-html]');
+        for (var j = 0; j < htmlEls.length; j++) {
+          htmlEls[j].innerHTML = FolioI18N.t(htmlEls[j].getAttribute('data-i18n-html'));
+        }
+        var ariaEls = document.querySelectorAll('[data-i18n-aria]');
+        for (var a = 0; a < ariaEls.length; a++) {
+          ariaEls[a].setAttribute('aria-label', FolioI18N.t(ariaEls[a].getAttribute('data-i18n-aria')));
+        }
+        var langBtns = document.querySelectorAll('.lang-btn');
+        for (var b = 0; b < langBtns.length; b++) {
+          var on = langBtns[b].getAttribute('data-lang') === lang;
+          langBtns[b].classList.toggle('active', on);
+          langBtns[b].setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
+
+        // og / meta and the URL follow the chosen language
+        var locale = lang === 'it' ? 'it_IT' : 'en_US';
+        function setMeta(sel, content) {
+          var el = document.querySelector(sel);
+          if (el) el.setAttribute('content', content);
+        }
+        setMeta('meta[property="og:locale"]', locale);
+        setMeta('meta[property="og:title"]', FolioI18N.t('ln.page.title'));
+        setMeta('meta[property="og:description"]', FolioI18N.t('ln.meta.desc'));
+        setMeta('meta[name="description"]', FolioI18N.t('ln.meta.desc'));
+        FolioI18N.syncUrl(lang);
+
+        var links = document.querySelectorAll('a[href]');
+        for (var li = 0; li < links.length; li++) {
+          var href = links[li].getAttribute('href');
+          if (!href || href.charAt(0) === '#' || /^[a-z]+:/i.test(href)) continue;
+          var hashIdx = href.indexOf('#');
+          var hash = hashIdx >= 0 ? href.slice(hashIdx) : '';
+          var path = hashIdx >= 0 ? href.slice(0, hashIdx) : href;
+          path = path.replace(/[?&]lang=(en|it)/, '');
+          if (lang === 'it') path += (path.indexOf('?') >= 0 ? '&' : '?') + 'lang=it';
+          links[li].setAttribute('href', path + hash);
+        }
+      }
+
+      var langBtns = document.querySelectorAll('.lang-btn');
+      for (var lb = 0; lb < langBtns.length; lb++) {
+        langBtns[lb].addEventListener('click', function () {
+          var lang = this.getAttribute('data-lang');
+          FolioI18N.set(lang);
+          applyLanguage(lang);
+        });
+      }
+
+      // Icons first, then the strings: data-i18n rewrites text nodes, so any
+      // icon inside a [data-i18n] element would be wiped if it ran first.
+      if (window.folioPaintIcons) window.folioPaintIcons(document);
+      applyLanguage(FolioI18N.current());
+      if (window.folioPaintIcons) window.folioPaintIcons(document);
+    })();
   </script>
 </body>
 </html>

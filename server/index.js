@@ -13,6 +13,7 @@ const ROOT = path.resolve(__dirname, '..');
 // Only these files from the project root are exposed publicly.
 const PUBLIC_FILES = new Set([
   'index.html', 'app.html', 'i18n.js', 'icons.js', 'server-tools.js',
+  'text-edit.js',
   'favicon.svg', 'icon-512.png', 'og-image.png',
 ]);
 

@@ -437,3 +437,70 @@ test('index.html hero CTA keeps the selected language', async () => {
   assert.match(d.querySelector('.hero-cta').getAttribute('href'), /app\.html\?lang=it/);
   w.close();
 });
+
+test('the inline text editor maps fonts and rewrites a real PDF', async () => {
+  const { dom } = makeDom('app.html');
+  await waitLoad(dom);
+  const w = dom.window;
+  const TE = w.FolioTextEdit;
+  const L = w.PDFLib;
+  assert.ok(TE, 'text-edit.js is loaded');
+  assert.ok(L, 'pdf-lib is loaded');
+
+  // --- font mapping: the three families, then the styles on top
+  assert.equal(TE.stripSubset('ABCDEE+Helvetica-Bold'), 'Helvetica-Bold');
+  assert.equal(TE.standardFontKey({ family: 'serif' }), 'Times-Roman');
+  assert.equal(TE.standardFontKey({ family: 'monospace', bold: true }), 'Courier-Bold');
+  assert.equal(TE.standardFontKey({ family: 'sans-serif', bold: true, italic: true }), 'Helvetica-BoldOblique');
+
+  // a standard face is honoured as it is…
+  assert.equal(TE.standardFontKey({ family: 'sans-serif', original: 'Helvetica-Oblique' }), 'Helvetica-Oblique');
+  // …and a real-world producer name keeps its family and weight
+  assert.equal(TE.standardFontKey({ family: 'sans-serif', original: 'TimesNewRomanPS-BoldMT' }), 'Times-Bold');
+  // an embedded, non-standard face falls back to its closest equivalent
+  assert.equal(TE.standardFontKey({ family: 'sans-serif', original: 'RobotoCondensed-Regular' }), 'Helvetica');
+
+  // --- style inference only when the page is unambiguous
+  assert.equal(TE.styleFromBaseFonts(['AAAAAA+Helvetica-Bold']).bold, true);
+  assert.equal(TE.styleFromBaseFonts(['AAAAAA+Helvetica-Bold']).sole, 'Helvetica-Bold');
+  assert.equal(TE.styleFromBaseFonts(['Helvetica-Bold', 'Helvetica']).bold, false, 'two faces cannot be attributed');
+
+  // --- the patch and its colour
+  const rect = TE.coverRect({ x: 10, y: 100, size: 10, width: 40, ascent: 0.8, descent: 0.2 });
+  assert.equal(rect.y, 98, 'the patch starts below the baseline');
+  assert.equal(rect.height, 10, 'one ascender plus one descender');
+  // The values come from the jsdom realm, so compare fields (deepStrictEqual
+  // would trip over the different Object prototype) without loosening anything.
+  const white = TE.averageColor([[255, 255, 255], [255, 255, 255]]);
+  assert.equal(white.r, 1);
+  assert.equal(white.g, 1);
+  assert.equal(white.b, 1);
+  const grey = TE.averageColor([[0, 0, 0], [255, 255, 255]]);
+  assert.ok(Math.abs(grey.r - 0.5) < 0.01, 'colours are averaged');
+  assert.ok(Math.abs(grey.g - 0.5) < 0.01);
+  assert.ok(Math.abs(grey.b - 0.5) < 0.01);
+
+  // --- a real round trip: draw, overwrite, then read the bytes back
+  const doc = await L.PDFDocument.create();
+  const font = await doc.embedFont(L.StandardFonts.Helvetica);
+  const page = doc.addPage(winArray(w, [300, 200]));
+  page.drawText('Original line', { x: 40, y: 120, font, size: 12 });
+
+  const applied = await TE.applyEdits({
+    PDFLib: L,
+    StandardFonts: L.StandardFonts,
+    rgb: L.rgb,
+    doc,
+    edits: [{
+      page: 0, x: 40, y: 120, size: 12, width: 70, ascent: 0.78, descent: 0.22,
+      font: 'Times-Bold', text: 'Rewritten text',
+      background: { r: 1, g: 1, b: 1 }, color: { r: 0, g: 0, b: 0 },
+    }],
+  });
+  assert.equal(applied, 1, 'the edit was applied');
+
+  const text = (await extractText(Buffer.from(await doc.save()))).join('\n');
+  assert.match(text, /Rewritten text/, 'the replacement text is in the document');
+
+  w.close();
+});

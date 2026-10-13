@@ -10,8 +10,11 @@ Read `agents/maintenance.md` first — it has the project map and the tool lists
 ## Workflow for any change
 
 1. **Locate the tool.** Client-side tools live inline in `app.html`
-   (`buildToolContent` + `init*`). Server-side tools live in
-   `server/tools/index.js` and are described for the UI in `server-tools.js`.
+   (`TOOL_UI` + `init*`). Server-side tools live in `server/tools/index.js` and
+   are described for the UI in `server-tools.js`. The one tool with logic of its
+   own is Edit text: keep its pure half in `text-edit.js` (`window.FolioTextEdit`)
+   and its DOM half in `initEditText`, so the export path stays testable without
+   a canvas. It also loads `vendor/pdfjs/` — vendored, never edited.
 2. **Keep the contract in sync.** A server tool must exist in *both*
    `tools` (server) and `TOOLS` (client config). The id strings must match.
 3. **Localise.** Every user-visible string goes through `FolioI18N.t(key)` and

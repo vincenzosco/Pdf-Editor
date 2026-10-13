@@ -61,6 +61,16 @@
     shield: '<path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z"/><path d="M9 12l2 2 4-4"/>',
     sanitize: '<path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z"/><path d="M9 9l6 6M15 9l-6 6"/>',
 
+    /* landing page */
+    highlight: '<path d="M12 3v12"/><path d="M8 11h8"/><path d="M6 21h12"/><path d="M12 15v6"/>',
+    sparkles: '<path d="M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8z"/><path d="M18 15l.9 2.3 2.1.9-2.1.9L18 21.6l-.9-2.5-2.1-.9 2.1-.9z"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>',
+    moon: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>',
+    palette: '<path d="M12 3a9 9 0 1 0 0 18c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.2 0-1 .8-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4-4-7-9-7z"/><path d="M7.5 11a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM10.5 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM14.5 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>',
+    cursor: '<path d="M7 4l10 6-4.5 1.5L11 16z"/><path d="M11 16l3 4"/>',
+    wand: '<path d="M5 19l9-9"/><path d="M14 10l1.5 1.5"/><path d="M17 4l.7 1.8L19.5 6.5l-1.8.7L17 9l-.7-1.8L14.5 6.5l1.8-.7z"/><path d="M5 5l.6 1.4L7 7l-1.4.6L5 9l-.6-1.4L3 7l1.4-.6z"/>',
+    contrast: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/>',
+
     /* chrome */
     search: '<circle cx="11" cy="11" r="6"/><path d="M15.5 15.5L21 21"/>',
     star: '<path d="M12 4l2.5 5 5.5.8-4 3.9 1 5.5-5-2.7-5 2.7 1-5.5-4-3.9 5.5-.8z"/>',
@@ -69,6 +79,7 @@
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
     close: '<path d="M6 6l12 12M18 6L6 18"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
+    minus: '<path d="M5 12h14"/>',
     'arrow-up': '<path d="M12 19V5"/><path d="M6 11l6-6 6 6"/>',
     'arrow-down': '<path d="M12 5v14"/><path d="M6 13l6 6 6-6"/>',
     download: '<path d="M12 4v10"/><path d="M8 11l4 4 4-4"/><path d="M5 20h14"/>',

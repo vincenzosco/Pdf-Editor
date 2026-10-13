@@ -7,12 +7,14 @@ and runs the tools that cannot work in the browser.
 ## Project map
 
 ```
-index.html          Landing page
+index.html          Landing page: 4 themes, vanilla animations, i18n
 app.html            The PDF editor (all client-side tool logic lives inline)
 i18n.js             EN/IT dictionaries + language API (window.FolioI18N)
 icons.js            The icon set: FOLIO_ICONS + folioIcon()/folioPaintIcons()
+text-edit.js        Pure logic for the inline text editor (window.FolioTextEdit)
 server-tools.js     UI for the server-side tools (calls /api)
 vendor/pdf-lib.min.js  Client-side PDF library (vendored, do not edit)
+vendor/pdfjs/       PDF.js build + worker, loaded only by Edit text (do not edit)
 favicon.svg, icon-512.png, og-image.png   Assets
 README.md, README.it.md   The same README in the two languages
 
@@ -88,6 +90,56 @@ shows the reason instead of a broken button.
   `window.FolioProgress`.
 - Text contrast: `--text-secondary` and `--text-muted` must stay ≥ 4.5:1 on
   `--bg`; the client test computes the WCAG ratio from the tokens themselves.
+
+## The landing page
+
+`index.html` is one static file with no build step and no framework:
+
+- **Themes.** Four palettes, each a block of custom properties in the stylesheet
+  under `:root[data-theme="…"]` (Aurora, Neon, Carta, Bento). The switcher
+  writes `folio.theme` to `localStorage`; a tiny inline script in `<head>`
+  applies the stored theme before first paint, so there is no flash. Default
+  follows `prefers-color-scheme`.
+- **Motion.** Vanilla only — CSS transitions, `IntersectionObserver` for the
+  reveals and the counters, `requestAnimationFrame` for the parallax. No GSAP,
+  no CDN beyond Google Fonts. Everything is skipped under
+  `prefers-reduced-motion: reduce`.
+- **Icons.** `icons.js` is loaded here too; static markup uses
+  `<span data-icon="pen"></span>` and `folioPaintIcons()` fills it in. Emoji and
+  dingbat entities are not used anywhere — that is a rule, not a preference.
+- **No invented social proof.** No testimonials, no "used by" logos, no
+  "loved by teams" line. Keep it that way: only factual claims (tool count,
+  no install, free).
+- Contrast is checked per theme; the body text tokens stay at 4.5:1 or better
+  on their own background.
+
+## Edit text — the inline editor
+
+This is the one tool that renders the document instead of transforming bytes:
+
+1. `load()` imports `vendor/pdfjs/pdf.min.mjs` **on demand** (only this tool
+   needs it), renders each page to a canvas and lays PDF.js's text content over
+   it as absolutely positioned, selectable spans.
+2. Clicking a run swaps it for an `<input>` that already carries the run's own
+   font size and family. The change is recorded as an edit op — page, x, y,
+   size, width, ascent/descent, mapped font, text and the sampled colours.
+3. **Apply** hands the ops to `FolioTextEdit.applyEdits` (`text-edit.js`), which
+   paints a patch sampled from the page under the run and redraws the new text
+   with pdf-lib. The patch colour comes from the pixels just outside the glyphs,
+   so coloured backgrounds survive; the text colour is the darkest pixel inside.
+
+**Known limits** — keep them documented rather than papering over them:
+
+- The old glyphs are **covered, not removed from the content stream**, so a text
+  extractor still returns the original string next to the new one. The page
+  looks right; the underlying text is layered.
+- A scanned PDF has no text layer, so there is nothing to click. The panel says
+  so and points at the OCR tool.
+- "Keeping the font" means one of the 12 standard faces pdf-lib can embed.
+  `ABCDEE+Helvetica-Bold` maps exactly; other names keep their family and weight
+  (`TimesNewRomanPS-BoldMT` → `Times-Bold`) and fall back to Helvetica.
+- Runs are positioned from the PDF.js transform, one span per run; heavily
+  overlapping or rotated runs may need a second pass.
 
 ## i18n invariants
 

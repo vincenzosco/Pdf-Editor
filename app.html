@@ -559,6 +559,55 @@
       .spinner { animation: none; }
       .progress--indeterminate .progress__bar { width: 100%; animation: none; }
     }
+
+    /* ===== Inline text editor (Edit text) ===== */
+    .text-editor {
+      margin-top: var(--space-4);
+      display: grid;
+      justify-items: center;
+      gap: var(--space-5);
+      max-height: 68vh;
+      overflow: auto;
+      padding: var(--space-4);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface-2);
+    }
+    .te-page {
+      position: relative;
+      flex: none;
+      background: var(--white);
+      box-shadow: var(--shadow-md);
+    }
+    .te-page canvas { display: block; }
+    /* The text layer sits exactly on the rendered glyphs: invisible text that
+       you can select, with a hit box per run. */
+    .te-layer { position: absolute; inset: 0; overflow: hidden; line-height: 1; }
+    .te-item {
+      position: absolute;
+      color: transparent;
+      white-space: pre;
+      cursor: text;
+      border-radius: 1px;
+      transition: background-color 140ms ease, box-shadow 140ms ease;
+    }
+    .te-item::selection { background: rgba(31, 76, 130, 0.3); }
+    .te-item:hover { background: rgba(31, 76, 130, 0.14); box-shadow: 0 0 0 1px rgba(31, 76, 130, 0.5); }
+    .te-item.is-edited { background: rgba(47, 158, 99, 0.2); box-shadow: 0 0 0 1px var(--success); }
+    .te-input {
+      position: absolute;
+      z-index: 5;
+      margin: 0;
+      padding: 0 1px;
+      border: 1px solid var(--ink-blue);
+      border-radius: 2px;
+      background: var(--white);
+      color: var(--text-primary);
+      outline: none;
+      box-shadow: var(--ring);
+    }
+    .te-empty { padding: var(--space-4); color: var(--text-secondary); font-size: var(--type-sm); }
+    .edit-count { display: inline-flex; align-items: center; height: 40px; font-size: var(--type-sm); color: var(--text-secondary); }
   </style>
 </head>
 <body data-title-key="ap.page.title">
@@ -602,6 +651,7 @@
 
   <script src="i18n.js"></script>
   <script src="server-tools.js"></script>
+  <script src="text-edit.js"></script>
   <script>
   // pdf-lib is vendored locally (vendor/pdf-lib.min.js). Guard anyway so a
   // blocked/missing script never blanks the whole app.
@@ -1128,17 +1178,18 @@
         statusId: 'edit-status',
         controls: fileUploadHTML({ id: 'edit-input', label: t('ap.upload.btnPdf'), icon: 'pen' }) +
           '<div class="tool-controls" id="edit-controls" style="display:none;">' +
-            '<div class="control-row"><div class="control-group grow"><label for="edit-text">' + t('ap.edittext.textLabel') + '</label>' +
-              '<input type="text" id="edit-text" placeholder="' + t('ap.edittext.placeholder') + '" /></div></div>' +
+            '<p class="hint">' + t('ap.edittext.viewHint') + '</p>' +
             '<div class="control-row">' +
-              '<div class="control-group"><label for="edit-x">' + t('ap.edittext.xLabel') + '</label><input type="number" id="edit-x" value="50" min="0" /></div>' +
-              '<div class="control-group"><label for="edit-y">' + t('ap.edittext.yLabel') + '</label><input type="number" id="edit-y" value="50" min="0" /></div>' +
-              '<div class="control-group"><label for="edit-size">' + t('ap.edittext.sizeLabel') + '</label><input type="number" id="edit-size" value="12" min="4" max="100" /></div>' +
-              '<div class="control-group"><label for="edit-color">' + t('ap.edittext.colorLabel') + '</label>' +
-                '<div class="color-picker-wrap"><input type="color" id="edit-color" value="#1B1C20" /></div></div>' +
+              '<div class="control-group"><label>' + t('ap.edittext.zoom') + '</label>' +
+                '<button type="button" class="btn-ghost" id="edit-zoom-out" aria-label="' + t('ap.edittext.zoomOut') + '">' + icon('minus', { size: 16 }) + '</button>' +
+                '<button type="button" class="btn-ghost" id="edit-zoom-in" aria-label="' + t('ap.edittext.zoomIn') + '">' + icon('plus', { size: 16 }) + '</button>' +
+              '</div>' +
+              '<div class="control-group grow"><span class="edit-count" id="edit-count" aria-live="polite">' + t('ap.edittext.noEdits') + '</span></div>' +
             '</div>' +
-            '<p class="hint">' + t('ap.edittext.hint') + '</p></div>',
-        actions: '<button class="btn-primary" id="edit-btn" disabled>' + icon('pen', { size: 16 }) + '<span>' + t('ap.edittext.btn') + '</span></button>',
+            '<div class="text-editor" id="edit-view" hidden></div>' +
+          '</div>',
+        actions: '<button class="btn-primary" id="edit-btn" disabled>' + icon('download', { size: 16 }) + '<span>' + t('ap.edittext.apply') + '</span></button>' +
+          '<button class="btn-ghost" id="edit-reset" disabled>' + icon('refresh', { size: 16 }) + '<span>' + t('ap.edittext.reset') + '</span></button>',
       };
     },
     rotate() {
@@ -1837,47 +1888,351 @@
   }
 
   // --- EDIT TEXT ---
+  // --- EDIT TEXT (inline, on the page) ---
+  // PDF.js renders the page and its real text is laid on top as a selectable
+  // layer. Clicking a run swaps it for an input that already carries the run's
+  // own size and font; "Apply" writes every change back with FolioTextEdit
+  // (text-edit.js), which covers the old glyphs and redraws them.
   function initEditText() {
-    let file = null;
     const btn = document.getElementById('edit-btn');
+    const resetBtn = document.getElementById('edit-reset');
+    const view = document.getElementById('edit-view');
+    const controls = document.getElementById('edit-controls');
+    const countEl = document.getElementById('edit-count');
+    const STATUS = 'edit-status';
+    const ZOOM_MIN = 0.6;
+    const ZOOM_MAX = 3;
+
+    let file = null;
+    let pdfjs = null;
+    let pdfDoc = null;
+    let libDoc = null;
+    let zoom = 1.4;
+    const edits = new Map();  // 'page:index' -> the op handed to applyEdits()
+    let meta = new Map();     // 'page:index' -> what the layer knows about the run
+
     setupUpload({
       inputId: 'edit-input', listId: 'file-list-edit-input', zoneId: 'upload-edit-input',
-      onFiles: (f) => { file = f[0]; document.getElementById('edit-controls').style.display = ''; btn.disabled = false; },
+      onFiles: (files) => {
+        file = files[0] || null;
+        edits.clear();
+        if (!file) { controls.style.display = 'none'; clearStatus(STATUS); updateCount(); return; }
+        controls.style.display = '';
+        load();
+      },
     });
-    async function run() {
-      if (!file) { showStatus('edit-status', 'error', t('ap.err.noFile')); return; }
-      const text = document.getElementById('edit-text').value;
-      if (!text) { showStatus('edit-status', 'error', t('ap.edittext.errText')); return; }
-      clearStatus('edit-status');
-      const current = document.getElementById('edit-btn');
-      setBusy(current, t('ap.edittext.busy'));
-      const task = createRun('edit-status', t('ap.edittext.busy'), { determinate: true });
+
+    function updateCount() {
+      const n = edits.size;
+      if (countEl) countEl.textContent = n ? t('ap.edittext.edits', { n: n }) : t('ap.edittext.noEdits');
+      btn.disabled = !file || n === 0;
+      resetBtn.disabled = n === 0;
+    }
+
+    /* PDF.js ships as an ES module and only the editor needs it, so it is
+       imported on demand: the rest of the app keeps working with no network
+       and no extra bytes. */
+    async function ensurePdfJs() {
+      if (pdfjs) return pdfjs;
       try {
-        const x = parseInt(document.getElementById('edit-x').value, 10) || 50;
-        const y = parseInt(document.getElementById('edit-y').value, 10) || 50;
-        const size = parseInt(document.getElementById('edit-size').value, 10) || 12;
-        const color = hexToRgb(document.getElementById('edit-color').value);
-        const doc = await PDFDocument.load(await readFileAsBytes(file));
-        const font = await doc.embedFont(StandardFonts.Helvetica);
-        const pages = doc.getPages();
-        pages.forEach((page, i) => {
-          checkpoint(task);
-          task.set((i / pages.length) * 100, '');
-          const { height } = page.getSize();
-          page.drawText(text, { x, y: height - y, font, size, color: rgb(color.r, color.g, color.b) });
-        });
-        const pdfBytes = await doc.save();
-        const name = getFileName(file) + '_with-text.pdf';
-        downloadPDF(pdfBytes, name);
-        showStatus('edit-status', 'success', t('ap.edittext.ok', { n: pages.length }) + downloadLink(objectUrl(pdfBytes), name));
+        pdfjs = await import('./vendor/pdfjs/pdf.min.mjs');
       } catch (e) {
-        await failOrCancel('edit-status', task, e, run);
-      } finally {
-        task.finish();
-        setIdle(current);
+        throw new Error(t('ap.edittext.needServer'));
+      }
+      pdfjs.GlobalWorkerOptions.workerSrc = 'vendor/pdfjs/pdf.worker.min.mjs';
+      return pdfjs;
+    }
+
+    /* BaseFont names for one page, read straight from the PDF: PDF.js only
+       reports a generic family per run, so this is how bold/italic survive. */
+    function baseFontsForPage(index) {
+      try {
+        const page = libDoc.getPage(index);
+        const resources = page.node.Resources();
+        if (!resources) return [];
+        const fonts = resources.lookup(PDFLIB.PDFName.of('Font'), PDFLIB.PDFDict);
+        if (!fonts) return [];
+        const names = [];
+        fonts.keys().forEach((key) => {
+          const font = fonts.lookup(key, PDFLIB.PDFDict);
+          const base = font && font.lookup(PDFLIB.PDFName.of('BaseFont'), PDFLIB.PDFName);
+          if (!base) return;
+          const raw = base.asString ? base.asString() : String(base);
+          names.push(String(raw).replace(/^\//, ''));
+        });
+        return names;
+      } catch (e) {
+        return [];
       }
     }
-    btn.addEventListener('click', run);
+
+    async function load() {
+      if (!file) return;
+      clearStatus(STATUS);
+      const task = createRun(STATUS, t('ap.edittext.loading'), { determinate: true });
+      try {
+        await ensurePdfJs();
+        const bytes = await readFileAsBytes(file);
+        pdfDoc = await pdfjs.getDocument({ data: bytes }).promise;
+        libDoc = await PDFLIB.PDFDocument.load(bytes);
+        await render(task);
+        showStatus(STATUS, 'info', t('ap.edittext.viewHint'));
+      } catch (e) {
+        await failOrCancel(STATUS, task, e, load);
+      } finally {
+        task.finish();
+      }
+    }
+
+    async function render(task) {
+      view.innerHTML = '';
+      view.hidden = false;
+      meta = new Map();
+      const dpr = window.devicePixelRatio || 1;
+      let runsTotal = 0;
+
+      for (let p = 1; p <= pdfDoc.numPages; p++) {
+        checkpoint(task);
+        task.set(((p - 1) / pdfDoc.numPages) * 100, t('ap.edittext.pageOf', { p: p, n: pdfDoc.numPages }));
+
+        const page = await pdfDoc.getPage(p);
+        const viewport = page.getViewport({ scale: zoom * dpr });
+
+        const wrap = document.createElement('div');
+        wrap.className = 'te-page';
+        wrap.style.width = (viewport.width / dpr) + 'px';
+        wrap.style.height = (viewport.height / dpr) + 'px';
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        canvas.style.width = (viewport.width / dpr) + 'px';
+        canvas.style.height = (viewport.height / dpr) + 'px';
+        wrap.appendChild(canvas);
+        await page.render({
+          canvasContext: canvas.getContext('2d', { willReadFrequently: true }),
+          viewport: viewport,
+        }).promise;
+
+        const layer = document.createElement('div');
+        layer.className = 'te-layer';
+        wrap.appendChild(layer);
+
+        const content = await page.getTextContent();
+        const styles = content.styles || {};
+        const pageStyle = FolioTextEdit.styleFromBaseFonts(baseFontsForPage(p - 1));
+        let runs = 0;
+
+        (content.items || []).forEach((item, index) => {
+          if (!item.str || !item.str.trim()) return;
+          runs++;
+          const tx = pdfjs.Util.transform(viewport.transform, item.transform);
+          const deviceSize = Math.hypot(tx[2], tx[3]) || 10;
+          const pdfSize = Math.hypot(item.transform[2], item.transform[3]) || item.height || 10;
+          const st = styles[item.fontName] || {};
+          const family = st.fontFamily || 'sans-serif';
+
+          const span = document.createElement('span');
+          span.className = 'te-item';
+          span.textContent = item.str;
+          span.style.left = (tx[4] / dpr) + 'px';
+          span.style.top = ((tx[5] - deviceSize) / dpr) + 'px';
+          span.style.fontSize = (deviceSize / dpr) + 'px';
+          span.style.fontFamily = family;
+          span.style.height = (deviceSize / dpr) + 'px';
+          span.style.transform = 'rotate(' + (Math.atan2(tx[1], tx[0]) * 180 / Math.PI).toFixed(3) + 'deg)';
+          layer.appendChild(span);
+
+          const key = p + ':' + index;
+          meta.set(key, {
+            key: key,
+            page: p - 1,
+            item: item,
+            size: pdfSize,
+            ascent: typeof st.ascent === 'number' ? st.ascent : 0.78,
+            descent: typeof st.descent === 'number' ? Math.abs(st.descent) : 0.22,
+            font: FolioTextEdit.standardFontKey({
+              family: family,
+              bold: pageStyle.bold,
+              italic: pageStyle.italic,
+              original: pageStyle.sole,
+            }),
+            canvas: canvas,
+            span: span,
+          });
+          if (edits.has(key)) span.classList.add('is-edited');
+          span.addEventListener('click', () => startEdit(key, span));
+        });
+
+        if (runs === 0) {
+          const empty = document.createElement('p');
+          empty.className = 'te-empty';
+          empty.textContent = t('ap.edittext.noTextLayer');
+          wrap.appendChild(empty);
+        }
+        view.appendChild(wrap);
+        runsTotal += runs;
+      }
+      if (!runsTotal) showStatus(STATUS, 'info', t('ap.edittext.noTextLayer'));
+      updateCount();
+    }
+
+    /* The patch that will cover the old glyphs must match what is painted
+       behind them, so sample the pixels just above and below the run and keep
+       the darkest pixel inside it as the text colour. */
+    function sampleColors(record) {
+      const canvas = record.canvas;
+      const span = record.span;
+      const ctx = canvas && canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx || !span) return { background: { r: 1, g: 1, b: 1 }, color: { r: 0, g: 0, b: 0 } };
+      const dpr = window.devicePixelRatio || 1;
+      const left = Math.max(0, Math.round(parseFloat(span.style.left) * dpr));
+      const top = Math.max(0, Math.round(parseFloat(span.style.top) * dpr));
+      const width = Math.max(2, Math.round(Math.max(span.offsetWidth || 0, 4) * dpr));
+      const height = Math.max(2, Math.round((parseFloat(span.style.fontSize) || 12) * dpr));
+      const x = Math.min(left, canvas.width - 1);
+      const w = Math.max(1, Math.min(width, canvas.width - x));
+      const band = Math.max(2, Math.round(3 * dpr));
+
+      function read(y, h) {
+        const yy = Math.max(0, Math.min(y, canvas.height - 1));
+        const hh = Math.max(1, Math.min(h, canvas.height - yy));
+        try { return ctx.getImageData(x, yy, w, hh).data; } catch (e) { return null; }
+      }
+
+      const outside = [];
+      [read(top - band, band), read(top + height, band)].forEach((strip) => {
+        if (!strip) return;
+        for (let i = 0; i < strip.length; i += 4) outside.push([strip[i], strip[i + 1], strip[i + 2]]);
+      });
+
+      let darkest = 765;
+      const dark = [0, 0, 0];
+      const inside = read(top, height);
+      if (inside) {
+        for (let i = 0; i < inside.length; i += 4) {
+          const sum = inside[i] + inside[i + 1] + inside[i + 2];
+          if (sum < darkest) { darkest = sum; dark[0] = inside[i]; dark[1] = inside[i + 1]; dark[2] = inside[i + 2]; }
+        }
+      }
+
+      return {
+        background: FolioTextEdit.averageColor(outside.length ? outside : [[255, 255, 255]]),
+        color: { r: dark[0] / 255, g: dark[1] / 255, b: dark[2] / 255 },
+      };
+    }
+
+    function startEdit(key, span) {
+      const record = meta.get(key);
+      if (!record || view.querySelector('.te-input')) return;
+      const original = record.item.str;
+      const previous = edits.has(key) ? edits.get(key).text : original;
+      const fontSize = parseFloat(span.style.fontSize) || 12;
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'te-input';
+      input.value = previous;
+      input.setAttribute('aria-label', t('ap.edittext.editAria'));
+      input.style.left = span.style.left;
+      input.style.top = span.style.top;
+      input.style.fontSize = span.style.fontSize;
+      input.style.fontFamily = span.style.fontFamily;
+      input.style.height = Math.max(fontSize * 1.25, 14) + 'px';
+      input.style.width = Math.max(span.offsetWidth || 0, previous.length * fontSize * 0.62, 40) + 'px';
+      span.style.visibility = 'hidden';
+      span.parentNode.insertBefore(input, span);
+      input.focus();
+      input.select();
+
+      let settled = false;
+      function commit() {
+        if (settled) return;
+        settled = true;
+        const value = input.value;
+        input.remove();
+        span.style.visibility = '';
+        if (!value || value === original) {
+          edits.delete(key);
+          span.classList.remove('is-edited');
+        } else {
+          const colors = sampleColors(record);
+          edits.set(key, {
+            page: record.page,
+            x: record.item.transform[4],
+            y: record.item.transform[5],
+            size: record.size,
+            width: record.item.width,
+            ascent: record.ascent,
+            descent: record.descent,
+            font: record.font,
+            text: value,
+            background: colors.background,
+            color: colors.color,
+          });
+          span.classList.add('is-edited');
+        }
+        updateCount();
+      }
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); commit(); }
+        else if (e.key === 'Escape') { e.preventDefault(); input.value = previous; commit(); }
+      });
+      input.addEventListener('blur', commit);
+    }
+
+    function setZoom(next) {
+      zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+      if (!pdfDoc) return;
+      clearStatus(STATUS);
+      const task = createRun(STATUS, t('ap.edittext.loading'), { determinate: true });
+      render(task).then(() => showStatus(STATUS, 'info', t('ap.edittext.viewHint')))
+        .catch(() => {})
+        .finally(() => task.finish());
+    }
+
+    async function apply() {
+      if (!file || !edits.size) return;
+      setBusy(btn, t('ap.edittext.busy'));
+      clearStatus(STATUS);
+      const task = createRun(STATUS, t('ap.edittext.busy'), { determinate: true });
+      try {
+        const doc = await PDFLIB.PDFDocument.load(await readFileAsBytes(file));
+        const list = [];
+        edits.forEach((edit) => {
+          checkpoint(task);
+          task.set((list.length / edits.size) * 100, '');
+          list.push(edit);
+        });
+        await FolioTextEdit.applyEdits({
+          PDFLib: PDFLIB,
+          StandardFonts: PDFLIB.StandardFonts,
+          rgb: PDFLIB.rgb,
+          doc: doc,
+          edits: list,
+        });
+        const bytes = await doc.save();
+        const name = getFileName(file) + '_edited.pdf';
+        downloadPDF(bytes, name);
+        showStatus(STATUS, 'success', t('ap.edittext.ok', { n: list.length }) + downloadLink(objectUrl(bytes), name));
+      } catch (e) {
+        await failOrCancel(STATUS, task, e, apply);
+      } finally {
+        task.finish();
+        setIdle(btn);
+      }
+    }
+
+    btn.addEventListener('click', apply);
+    document.getElementById('edit-zoom-in').addEventListener('click', () => setZoom(zoom * 1.2));
+    document.getElementById('edit-zoom-out').addEventListener('click', () => setZoom(zoom / 1.2));
+    resetBtn.addEventListener('click', () => {
+      edits.clear();
+      view.querySelectorAll('.te-item.is-edited').forEach((el) => el.classList.remove('is-edited'));
+      updateCount();
+    });
+    updateCount();
   }
 
   // --- ROTATE ---

@@ -15,8 +15,10 @@ npm test         # server tests + client tests
 ```
 
 `npm start` serves the workspace at `/app.html` and the landing page at `/`.
-The browser-only tools (merge, split, rotate, watermark, JPG to PDF, …) work
-even with no server at all. The tools marked *server* need it and call `/api`:
+The landing page ships **four themes** (Aurora, Neon, Paper, Bento) with a
+switcher in its header, and all of its motion is plain CSS — nothing is fetched
+to animate it. The browser-only tools (merge, split, rotate, watermark, JPG to
+PDF, …) work even with no server at all. The tools marked *server* need it and call `/api`:
 if you open `app.html` as a file, those panels explain that they are offline
 instead of failing silently.
 
@@ -33,8 +35,9 @@ Other scripts:
 ## Tools
 
 **In the browser** (files never leave the device) — merge, split,
-remove/extract/reorder pages, rotate, page numbers, watermark, crop, edit text,
-JPG to PDF, HTML to PDF.
+remove/extract/reorder pages, rotate, page numbers, watermark, crop, JPG to PDF,
+HTML to PDF. **Edit text** renders the page and lays its real text on top: click
+a line and rewrite it in place, keeping its size and font.
 
 **On the server (pure JS)** — PDF to JPG, PDF to PowerPoint, OCR, scan, extract
 text, deskew, PDF to Word, PDF to Excel, PDF to HTML, PDF to Markdown, compare,
