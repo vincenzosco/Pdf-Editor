@@ -99,7 +99,7 @@ const isMain = (() => {
   try { return realpathSync(process.argv[1]) === SELF_PATH; } catch { return false; }
 })();
 if (isMain) {
-  const port = process.env.PORT || 8080;
+  const port = process.env.PORT || 80;
   const server = createApp().listen(port, () => {
     console.log(`Folio server listening on http://localhost:${port}`);
   });

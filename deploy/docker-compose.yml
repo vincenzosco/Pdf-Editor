@@ -2,9 +2,11 @@
 # so LibreOffice, Ghostscript, qpdf and Tesseract are all present) plus Caddy in
 # front of it.
 #
-# With DOMAIN set (see .env.example) Caddy obtains a certificate for it
-# automatically. With DOMAIN empty it serves plain HTTP on port 80, which is all
-# a bare IP address can support.
+# The app listens on its default port, 80, inside the container; Caddy publishes
+# that on the VM's public 80/443. With DOMAIN set (see .env.example) it requests
+# a Let's Encrypt certificate for the name and redirects HTTP to HTTPS;
+# deploy.sh defaults DOMAIN to <public-ip>.nip.io, a host name that resolves to
+# the VM without owning any DNS.
 #
 # The build context is the repository root — the parent of this file — so a
 # deploy is "copy the sources to the VM, then docker compose up -d --build".
@@ -19,11 +21,13 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      PORT: 8080
+      PORT: 80
     ports:
-      - "8080:8080"
+      # Host 8080 -> the container's default 80, so the app stays reachable
+      # directly (and healthcheck.sh --vm works) while Caddy owns 80/443.
+      - "8080:80"
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:80/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -38,7 +42,7 @@ services:
     environment:
       # ":80" is a valid Caddy site address, so an empty DOMAIN needs no branch.
       SITE_ADDRESS: ${DOMAIN:-:80}
-      APP_UPSTREAM: ${APP_UPSTREAM:-app:8080}
+      APP_UPSTREAM: ${APP_UPSTREAM:-app:80}
     ports:
       - "80:80"
       - "443:443"

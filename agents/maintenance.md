@@ -32,7 +32,7 @@ docs/DEPLOY-GCP.md  Deployment runbook for the project's VM
 
 ```bash
 npm install          # installs server dependencies
-npm start            # http://localhost:8080/app.html
+npm start            # http://localhost/app.html (port 80 by default)
 npm test             # server tests + client tests
 ```
 
@@ -109,19 +109,25 @@ deployed with the scripts in `deploy/` — the full runbook is
 
 - **VM:** `PROJECT=… ZONE=… VM=… deploy/deploy.sh` (idempotent; rebuilds the
   image, brings the compose stack up and checks the public address).
-- **Container:** `docker build -t folio . && docker run -p 8080:8080 folio`.
+- **Container:** `docker build -t folio . && docker run -p 8080:80 folio`.
   The Dockerfile installs LibreOffice/Ghostscript/qpdf and bakes in the OCR
   models, so every tool is available.
-- **Node host:** `npm ci --omit=dev && npm start` (set `PORT`). Without the
-  native binaries the corresponding tools report as unavailable.
-- **Health check:** `deploy/healthcheck.sh --url http://34.61.56.12`;
+- **Node host:** `npm ci --omit=dev && npm start` (defaults to port 80; set
+  `PORT` to change it). Without the native binaries the corresponding tools
+  report as unavailable.
+- **Ports and TLS:** the app listens on 80 inside its container; Caddy publishes
+  it on the VM's 80/443 and obtains a Let's Encrypt certificate for
+  `<public-ip>.nip.io` (whatever `DOMAIN` in `deploy/.env` says). `deploy.sh`
+  fills that in unless `--domain` or `--no-tls` is given.
+- **Health check:** `deploy/healthcheck.sh --url https://34.61.56.12.nip.io`;
   `GET /api/health` answers, `GET /api/tools` is the tool map.
 
 ### After moving domains
 
 `index.html`/`app.html` hold absolute `og:url` / `og:image` meta tags pointing
-at the deployed address (`http://34.61.56.12/`). Update both files, and the
-`README`s that mention it, when the site moves. Keep the `?lang=` behaviour and
+at the deployed address (`https://34.61.56.12.nip.io/`). Update both files, and
+the `README`s that mention it, when the site moves. Keep the `?lang=` behaviour
+and
 the `?tool=` deep link intact.
 
 ## Housekeeping

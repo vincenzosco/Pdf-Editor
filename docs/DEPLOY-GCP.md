@@ -13,6 +13,7 @@ Everything lives in `deploy/` and every command below is safe to re-run.
 | Zone | `us-central1-a` |
 | Machine type | `e2-micro` (1 GB RAM — see *Swap* below) |
 | Address | `34.61.56.12` (ephemeral) |
+| Public URL | `https://34.61.56.12.nip.io/` (Let's Encrypt, via Caddy) |
 
 ## 0. Prerequisites
 
@@ -53,13 +54,17 @@ What it does, all idempotent:
    then `docker compose up -d --build`;
 3. waits for `/api/health` behind Caddy and reports.
 
-Add `--domain your.domain` to also get a certificate; `--no-healthcheck` skips
-step 3.
+The app listens on **port 80** inside its container; Caddy publishes it on the
+VM's 80/443. `deploy.sh` defaults `DOMAIN` to `<public-ip>.nip.io`, which resolves
+to the VM, so Caddy obtains a **Let's Encrypt** certificate with no DNS of your
+own and redirects HTTP to HTTPS. Pass `--domain your.domain` once you own one, or
+`--no-tls` to skip the certificate and serve plain HTTP on port 80.
+`--no-healthcheck` skips step 3.
 
 ## 3. Verify
 
 ```bash
-deploy/healthcheck.sh --url http://34.61.56.12
+deploy/healthcheck.sh --url https://34.61.56.12.nip.io
 ```
 
 It checks `/api/health`, that `/` serves the site, and that every entry of
@@ -71,7 +76,7 @@ Other useful commands:
 ```bash
 deploy/healthcheck.sh --vm pdf-editor-server --zone us-central1-a \
   --project pdf-editor-511418            # same checks on localhost, over SSH
-deploy/healthcheck.sh --url http://34.61.56.12 --allow-missing   # warnings only
+deploy/healthcheck.sh --url https://34.61.56.12.nip.io --allow-missing   # warnings only
 
 gcloud compute ssh pdf-editor-server --zone us-central1-a --project pdf-editor-511418 \
   --command "sudo docker compose -f /opt/folio/deploy/docker-compose.yml logs --tail=100 app"
@@ -103,22 +108,30 @@ deploy/deploy.sh …            # rebuilds; the apt layer is cached, so this is 
 The Caddy certificate and the Tesseract language models live in named volumes,
 so they survive a rebuild.
 
-## Optional: a domain and HTTPS
+## HTTPS and your own domain
 
-Caddy can only obtain a certificate for a name, not for an IP, so point a DNS
-record at `34.61.56.12` first:
+Out of the box the site is served over TLS at `https://<public-ip>.nip.io/`.
+That name is provided by [nip.io](https://nip.io), which resolves it back to the
+VM, and Let's Encrypt issues the certificate for it — so HTTPS works with no DNS
+of your own. The certificate lives in the `caddy_data` volume and Caddy renews it
+on its own; the first request after a fresh deploy can take a few seconds while
+Caddy talks to the ACME server (the deploy waits for it).
+
+`<ip>.nip.io` is convenient but ugly in links, so switch to a name you own: point
+a DNS record at the VM's address and re-run with `--domain`:
 
 ```bash
 deploy/deploy.sh … --domain folio.example.com
 ```
 
-Caddy requests the certificate on the next start (see `docker compose logs
-caddy`). Both `node` and Caddy then serve the same content; the app stays
-reachable directly on `:8080`.
+Caddy requests the new certificate on the next start (see `docker compose logs
+caddy`); both names keep working until the DNS record for the old one is removed.
+To go back to plain HTTP on port 80, re-run with `--no-tls` (the app stays
+reachable directly on `:8080`).
 
-Then update the absolute `og:url` / `og:image` meta tags in `index.html` and
-`app.html` to the new address, so link previews resolve. Keep the `?lang=`
-parameter handling intact.
+After any change to the public name, update the absolute `og:url` / `og:image`
+meta tags in `index.html` and `app.html`, so link previews resolve. Keep the
+`?lang=` parameter handling intact.
 
 ## Static IP (recommended)
 
@@ -142,6 +155,8 @@ gcloud compute instances add-access-config pdf-editor-server --zone us-central1-
 | `deploy.sh` exits 2 | `PROJECT`/`ZONE`/`VM` missing or the instance name is wrong; the message names the flag. |
 | Health check fails on `/api/tools` | The image lost a native binary: `sudo docker compose logs app`. |
 | Timeout on `:80` | Firewall rule or Caddy: `sudo ss -ltnp` and `docker compose ps`. |
+| No certificate yet / `https://<ip>.nip.io` hangs | Caddy is still requesting it: `sudo docker compose logs caddy`. Ports 80 and 443 must both be open for the ACME challenge (`open-firewall.sh`). |
+| `rate limit exceeded` in the Caddy log | Let's Encrypt refused a new certificate for that name; reuse the existing one or pass `--domain` with a name you own. |
 | Build killed (exit 137) | Out of memory: confirm swap is on (`swapon --show`) or use a larger machine type. |
 | `apt-get update` prints `does not have a Release file` | A stale third-party repository on the VM (roadmap: `packagecloud.io/ookla/speedtest-cli`). `remote-setup.sh` warns and continues, then falls back to `get.docker.com` if the packages still cannot be installed. |
 | OCR downloads models at runtime | `server/tessdata` was not fetched during the build; check the Dockerfile step. |

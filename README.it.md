@@ -11,7 +11,7 @@ nel browser.
 
 ```bash
 npm install
-npm start        # http://localhost:8080/app.html
+npm start        # http://localhost/app.html (porta 80 di default; PORT=8080 per cambiarla)
 npm test         # test server + test client
 ```
 
@@ -69,7 +69,7 @@ In locale, con Docker:
 
 ```bash
 docker build -t folio .
-docker run -p 8080:8080 folio
+docker run -p 8080:80 folio
 ```
 
 L'immagine installa LibreOffice, Ghostscript e qpdf e include i modelli OCR,
@@ -86,14 +86,17 @@ PROJECT=pdf-editor-511418 ZONE=us-central1-a VM=pdf-editor-server \
 ```
 
 `deploy.sh` impacchetta i sorgenti, li copia sulla VM, la prepara (file di swap
-da 2 GB, Docker + compose) e avvia lo stack. Si può rieseguire senza rischi. Per
-servire in HTTPS, punta un record DNS alla VM e rilancia con
-`--domain tuo.dominio`: Caddy ottiene il certificato automaticamente. Il runbook
-completo, con come leggere i log e tornare indietro, è in
+da 2 GB, Docker + compose) e avvia lo stack. Si può rieseguire senza rischi.
+L'app ascolta sulla porta 80 di default e Caddy le sta davanti: da solo Caddy
+chiede a Let's Encrypt il certificato per `<ip-pubblico>.nip.io`, un nome che
+risolve verso la VM senza DNS tuo, quindi il sito è subito in HTTPS. Passa
+`--domain tuo.dominio` quando ne possiedi uno, oppure `--no-tls` per restare in
+HTTP. Il runbook completo, con come leggere i log e tornare indietro, è in
 [docs/DEPLOY-GCP.md](docs/DEPLOY-GCP.md).
 
-L'istanza deployata è raggiungibile su <http://34.61.56.12/>. `og:url` e
-`og:image` in `index.html` puntano lì; cambiali entrambi se il sito si sposta.
+L'istanza deployata è raggiungibile su <https://34.61.56.12.nip.io/>. Usa quel
+nome e non l'IP nudo: il certificato copre solo il nome. `og:url` e `og:image`
+in `index.html` puntano lì; cambiali entrambi se il sito si sposta.
 
 ## Documentazione
 

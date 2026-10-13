@@ -19,7 +19,8 @@ Read `agents/maintenance.md` first — it has the project map and the tool lists
 4. **Test.** Add assertions to `server/test/` (server) or `test/` (client), then
    run `npm test`. Never weaken an assertion to make it pass.
 5. **Verify by hand for UI work** by running `npm start` and opening
-   `http://localhost:8080/app.html`.
+   `http://localhost/app.html` (the server defaults to port 80; use `PORT=8080`
+   if that port is taken).
 
 ## Checklist before finishing
 

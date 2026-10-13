@@ -2,18 +2,21 @@
 # Deploy Folio to the project's Google Cloud VM.
 #
 #   deploy/deploy.sh --project pdf-editor-511418 --zone us-central1-a \
-#                    --vm pdf-editor-server [--domain example.com]
+#                    --vm pdf-editor-server [--domain example.com] [--no-tls]
 #
 # PROJECT, ZONE and VM can also come from the environment. The script refuses to
 # run without all three, and it is safe to re-run: it copies the sources,
 # prepares the VM (swap + Docker) and brings the compose stack up, rebuilding
-# only what changed.
+# only what changed. Unless --no-tls is given it points Caddy at
+# <public-ip>.nip.io, so Let's Encrypt issues a certificate with no DNS of your
+# own.
 set -euo pipefail
 
 PROJECT="${PROJECT:-}"
 ZONE="${ZONE:-}"
 VM="${VM:-}"
 DOMAIN="${DOMAIN:-}"
+NO_TLS="${NO_TLS:-0}"
 FOLIO_TAG="${FOLIO_TAG:-}"
 SSH_USER="${SSH_USER:-}"
 REMOTE_DIR="${REMOTE_DIR:-/opt/folio}"
@@ -24,14 +27,15 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/.." && pwd)"
 
 usage() {
-  sed -n '2,9p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   cat <<'EOF'
 
 Flags / environment:
   --project PROJECT   GCP project id            (or $PROJECT)
   --zone ZONE         zone of the VM            (or $ZONE)
   --vm NAME           instance name             (or $VM)
-  --domain HOST       optional public host name (or $DOMAIN)
+  --domain HOST       host name for TLS          (default: <public-ip>.nip.io)
+  --no-tls            plain HTTP on :80, no certificate (or $NO_TLS=1)
   --user USER         SSH user on the VM        (default: your local user)
   --dir PATH          install directory on the VM (default: /opt/folio)
   --tag TAG           image tag                 (default: short git SHA)
@@ -45,6 +49,7 @@ while [ $# -gt 0 ]; do
     --zone) ZONE="$2"; shift 2 ;;
     --vm) VM="$2"; shift 2 ;;
     --domain) DOMAIN="$2"; shift 2 ;;
+    --no-tls) NO_TLS=1; shift ;;
     --user) SSH_USER="$2"; shift 2 ;;
     --dir) REMOTE_DIR="$2"; shift 2 ;;
     --tag) FOLIO_TAG="$2"; shift 2 ;;
@@ -95,6 +100,22 @@ if ! g compute instances describe "$VM" --zone "$ZONE" --project "$PROJECT" --fo
   exit 2
 fi
 
+# The public address is needed twice — the default TLS host name and the final
+# check — so resolve it once.
+IP="$(g compute instances describe "$VM" --zone "$ZONE" --project "$PROJECT" \
+  --format='value(networkInterfaces[0].accessConfigs[0].natIP)')"
+if [ -z "$IP" ]; then
+  echo "error: $VM has no external address; Folio has to be reachable from outside." >&2
+  exit 2
+fi
+if [ -z "$DOMAIN" ] && [ "$NO_TLS" != "1" ]; then
+  # nip.io resolves <ip>.nip.io back to <ip>, so Let's Encrypt can validate the
+  # name and issue a certificate without a DNS record of your own. Let's
+  # Encrypt keeps a raised rate limit for nip.io for exactly this use, and Caddy
+  # renews the certificate on its own.
+  DOMAIN="$IP.nip.io"
+fi
+
 # 1. Package the sources. node_modules and the local state never travel: the
 #    image installs its dependencies itself.
 STAGE="$(mktemp -d)"
@@ -109,10 +130,10 @@ tar -czf "$STAGE/folio-src.tar.gz" \
   .
 
 cat > "$STAGE/folio.env" <<EOF
-PORT=8080
+PORT=80
 DOMAIN=$DOMAIN
 FOLIO_TAG=$FOLIO_TAG
-APP_UPSTREAM=app:8080
+APP_UPSTREAM=app:80
 SWAP_MB=$SWAP_MB
 EOF
 
@@ -137,16 +158,41 @@ if [ "$SKIP_HEALTHCHECK" = "1" ]; then
   step "skipping the health check (--no-healthcheck)"
   exit 0
 fi
-IP="$(g compute instances describe "$VM" --zone "$ZONE" --project "$PROJECT" \
-  --format='value(networkInterfaces[0].accessConfigs[0].natIP)')"
-step "health check on http://$IP"
-bash "$HERE/healthcheck.sh" --url "http://$IP"
+if [ -n "$DOMAIN" ]; then
+  CHECK_URL="https://$DOMAIN"
+else
+  CHECK_URL="http://$IP"
+fi
+step "health check on $CHECK_URL"
+# On the first deploy Caddy still has to request the certificate, so give it a
+# few attempts before calling the deployment broken.
+attempt=0
+until bash "$HERE/healthcheck.sh" --url "$CHECK_URL"; do
+  attempt=$((attempt + 1))
+  if [ "$attempt" -ge 10 ]; then
+    echo "error: the deployment failed its health check $attempt times." >&2
+    exit 1
+  fi
+  echo "    ... retrying in 10s (Caddy may still be requesting the certificate)"
+  sleep 10
+done
 
 step "deployed"
-cat <<EOF
-  http://$IP           (app on port 80, via Caddy)
-  http://$IP:8080      (the app container directly)
+if [ -n "$DOMAIN" ]; then
+  cat <<EOF
+  https://$DOMAIN     (the site over TLS, via Caddy)
+  http://$DOMAIN      (redirects to HTTPS)
+  http://$IP:8080     (the app container directly, no TLS)
 
-Set DOMAIN and re-run to serve HTTPS instead:
+Point your own domain here and re-run to drop the nip.io name:
   deploy/deploy.sh --project $PROJECT --zone $ZONE --vm $VM --domain your.domain
 EOF
+else
+  cat <<EOF
+  http://$IP          (plain HTTP on port 80, via Caddy)
+  http://$IP:8080     (the app container directly)
+
+Re-run without --no-tls to get a Let's Encrypt certificate:
+  deploy/deploy.sh --project $PROJECT --zone $ZONE --vm $VM
+EOF
+fi

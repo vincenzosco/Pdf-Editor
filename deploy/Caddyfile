@@ -1,10 +1,13 @@
 # Folio reverse proxy.
 #
 # SITE_ADDRESS comes from the compose environment:
-#   DOMAIN=example.com  -> Caddy requests a certificate for example.com
+#   DOMAIN=example.com  -> Caddy requests a Let's Encrypt certificate for it and
+#                          serves it on 443, redirecting 80 to 443.
 #   DOMAIN unset        -> ":80", plain HTTP (no certificate is possible for a
 #                          bare IP address, but the stack is usable immediately)
-# APP_UPSTREAM defaults to the app container on its internal port.
+# deploy.sh fills DOMAIN with <public-ip>.nip.io unless --no-tls is given, so an
+# unattended deploy gets HTTPS without a DNS record of its own.
+# APP_UPSTREAM defaults to the app container on its internal port (80).
 {$SITE_ADDRESS} {
 	encode zstd gzip
 
