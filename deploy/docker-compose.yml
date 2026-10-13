@@ -1,0 +1,53 @@
+# Folio on a single VM: the app container (built from the repository Dockerfile,
+# so LibreOffice, Ghostscript, qpdf and Tesseract are all present) plus Caddy in
+# front of it.
+#
+# With DOMAIN set (see .env.example) Caddy obtains a certificate for it
+# automatically. With DOMAIN empty it serves plain HTTP on port 80, which is all
+# a bare IP address can support.
+#
+# The build context is the repository root — the parent of this file — so a
+# deploy is "copy the sources to the VM, then docker compose up -d --build".
+name: folio
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: folio:${FOLIO_TAG:-local}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+    environment:
+      # ":80" is a valid Caddy site address, so an empty DOMAIN needs no branch.
+      SITE_ADDRESS: ${DOMAIN:-:80}
+      APP_UPSTREAM: ${APP_UPSTREAM:-app:8080}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

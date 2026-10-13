@@ -12,7 +12,8 @@ const ROOT = path.resolve(__dirname, '..');
 
 // Only these files from the project root are exposed publicly.
 const PUBLIC_FILES = new Set([
-  'index.html', 'app.html', 'i18n.js', 'server-tools.js', 'favicon.svg', 'icon-512.png', 'og-image.png',
+  'index.html', 'app.html', 'i18n.js', 'icons.js', 'server-tools.js',
+  'favicon.svg', 'icon-512.png', 'og-image.png',
 ]);
 
 const upload = multer({
@@ -52,6 +53,10 @@ export function createApp() {
       const out = await tool.run({ files, options });
       res.setHeader('Content-Type', out.mime);
       res.setHeader('X-Folio-Filename', out.filename);
+      // Tools that can say something useful about the result (which OCR
+      // language was detected, how many pages were scanned) report it here,
+      // so the body stays the raw file.
+      if (out.report) res.setHeader('X-Folio-Report', JSON.stringify(out.report));
       res.setHeader('Content-Disposition', `attachment; filename="${out.filename.replace(/"/g, '')}"`);
       res.send(out.buffer);
     } catch (e) {
@@ -95,7 +100,22 @@ const isMain = (() => {
 })();
 if (isMain) {
   const port = process.env.PORT || 8080;
-  createApp().listen(port, () => {
+  const server = createApp().listen(port, () => {
     console.log(`Folio server listening on http://localhost:${port}`);
   });
+
+  // The OCR worker threads keep the event loop alive, so a container stop has
+  // to tear them down explicitly or the process would hang until SIGKILL.
+  const shutdown = (signal) => {
+    console.log(`[server] ${signal} received, shutting down`);
+    server.close(async () => {
+      const { closeWorkers } = await import('./lib/ocr.js');
+      await closeWorkers();
+      process.exit(0);
+    });
+    // Do not wait forever for in-flight requests.
+    setTimeout(() => process.exit(0), 10_000).unref();
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }

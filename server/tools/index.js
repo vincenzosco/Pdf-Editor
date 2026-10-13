@@ -8,9 +8,10 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import {
   PDFDocument, rgb, StandardFonts,
-  rasterizePdf, extractText, loadPdf, savePdf, zip, BIN, runBin,
-  mmToPt, clampInt,
+  rasterizePdf, extractText, extractLayout, groupLines, loadPdf, savePdf,
+  zip, BIN, runBin, mmToPt, clampInt,
 } from '../lib/util.js';
+import { makeSearchable, deskewPdf, DEFAULT_DPI } from '../lib/ocr.js';
 
 const require = createRequire(import.meta.url);
 const docxMod = require('docx');
@@ -57,28 +58,97 @@ const writeTemp = async (dir, name, buffer) => {
 };
 
 /* --------------------------------- OCR ------------------------------------ */
-async function imagesToSearchablePdf(buffers, lang) {
-  const { createWorker } = await import('tesseract.js');
-  // Keep the downloaded language data out of the project directory.
-  const worker = await createWorker(lang || 'eng', 1, {
-    cachePath: path.join(os.tmpdir(), 'folio-tesseract'),
-  });
-  const pages = [];
-  try {
-    for (const b of buffers) {
-      const { data } = await worker.recognize(b, {}, { pdf: true });
-      if (data && data.pdf) pages.push(Buffer.from(data.pdf));
+/** Wrap images in a PDF so they can go through the one searchable-PDF path. */
+async function imagesToPdf(buffers) {
+  const doc = await PDFDocument.create();
+  for (const b of buffers) {
+    let image;
+    try {
+      image = await doc.embedPng(b);
+    } catch {
+      image = await doc.embedJpg(b);
     }
-  } finally {
-    await worker.terminate();
+    const page = doc.addPage([image.width, image.height]);
+    page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
   }
-  if (!pages.length) throw err('No text could be recognised.', 422);
-  const out = await PDFDocument.create();
-  for (const p of pages) {
-    const src = await PDFDocument.load(p);
-    for (const pg of await out.copyPages(src, src.getPageIndices())) out.addPage(pg);
-  }
-  return Buffer.from(await out.save());
+  return Buffer.from(await doc.save());
+}
+
+/** OCR options shared by the OCR, Scan and Extract text tools. */
+function ocrOptions(options = {}) {
+  return {
+    lang: options.lang,
+    dpi: options.dpi || DEFAULT_DPI,
+    pageMode: options.pageMode,
+    deskew: options.deskew,
+  };
+}
+
+/** `--- Page 1/3 ---` banner, so a long extraction stays navigable. */
+function withHeader(text, page, total) {
+  return `--- Page ${page}/${total} ---\n${(text || '').trim()}\n`;
+}
+
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}[c]));
+
+/** A self-contained HTML file: one positioned <div> per page. */
+function htmlFromLayout(pages, title) {
+  const body = pages.map((page) => {
+    const lines = groupLines(page);
+    const inner = lines.map((line) => {
+      const left = (line.x / page.width) * 100;
+      const top = (line.y / page.height) * 100;
+      return `<span style="left:${left.toFixed(3)}%;top:${top.toFixed(3)}%;`
+        + `font-size:${line.size.toFixed(2)}pt">${escapeHtml(line.text)}</span>`;
+    }).join('\n    ');
+    return `  <div class="page" style="width:${page.width}pt;height:${page.height}pt">\n    ${inner}\n  </div>`;
+  }).join('\n');
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${escapeHtml(title)}</title>
+<style>
+  body { margin: 0; background: #f4f3ef; font-family: Georgia, serif; }
+  .page { position: relative; margin: 24px auto; background: #fff;
+          box-shadow: 0 1px 4px rgba(0,0,0,.14); overflow: hidden; }
+  .page span { position: absolute; white-space: pre; transform-origin: 0 0; }
+  @media print { body { background: #fff; } .page { margin: 0; box-shadow: none; } }
+</style>
+</head>
+<body>
+${body}
+</body>
+</html>
+`;
+}
+
+/** Markdown with headings inferred from font size and simple list detection. */
+function markdownFromLayout(pages, title) {
+  const allSizes = pages.flatMap((p) => groupLines(p).map((l) => l.size)).sort((a, b) => a - b);
+  const median = allSizes.length ? allSizes[Math.floor(allSizes.length / 2)] : 12;
+  const out = [`# ${title}`, ''];
+  pages.forEach((page, index) => {
+    const lines = groupLines(page);
+    if (index > 0) out.push('', '---', '', `<!-- page ${page.page} -->`, '');
+    for (const line of lines) {
+      const text = line.text.replace(/\s+/g, ' ').trim();
+      if (!text) continue;
+      if (line.size >= median * 1.6 && text.length < 90) {
+        out.push('', `## ${text}`, '');
+      } else if (line.size >= median * 1.25 && text.length < 90) {
+        out.push('', `### ${text}`, '');
+      } else if (/^([-•▪◦*]|\d+[.)])\s+/.test(text)) {
+        out.push(`- ${text.replace(/^([-•▪◦*]|\d+[.)])\s+/, '')}`);
+      } else {
+        out.push(text, '');
+      }
+    }
+  });
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
 }
 
 /* ------------------------------ Office / PDF-A ----------------------------- */
@@ -137,25 +207,87 @@ export const tools = {
     label: 'OCR PDF',
     async run(ctx) {
       const pdf = firstPdf(ctx);
-      const imgs = await rasterizePdf(pdf.buffer, { scale: scaleOf(ctx), format: 'png' });
-      const pdfBytes = await imagesToSearchablePdf(imgs.map((i) => i.data), ctx.options.lang);
-      return file(baseName(pdf.name) + '-ocr.pdf', MIME.pdf, pdfBytes);
+      const { buffer, report } = await makeSearchable(pdf.buffer, ocrOptions(ctx.options));
+      return Object.assign(file(baseName(pdf.name) + '-ocr.pdf', MIME.pdf, buffer), { report });
     },
   },
 
   scan: {
     label: 'Scan to PDF',
     async run(ctx) {
-      const imgs = imageFiles(ctx.files);
       const pdf = pdfIfAny(ctx.files);
-      let buffers = imgs.map((i) => i.buffer);
-      if (!buffers.length && pdf) {
-        buffers = (await rasterizePdf(pdf.buffer, { scale: scaleOf(ctx), format: 'png' })).map((i) => i.data);
-      }
-      if (!buffers.length) throw err('Upload at least one PNG/JPG image or a PDF.');
+      const images = imageFiles(ctx.files).map((i) => i.buffer);
+      if (!images.length && !pdf) throw err('Upload at least one PNG/JPG image or a PDF.');
+      const source = pdf ? pdf.buffer : await imagesToPdf(images);
       const name = pdf ? baseName(pdf.name) : baseName(ctx.files[0].name);
-      const pdfBytes = await imagesToSearchablePdf(buffers, ctx.options.lang);
-      return file(name + '-scan.pdf', MIME.pdf, pdfBytes);
+      const { buffer, report } = await makeSearchable(source, ocrOptions(ctx.options));
+      return Object.assign(file(name + '-scan.pdf', MIME.pdf, buffer), { report });
+    },
+  },
+
+  'extract-text': {
+    label: 'Extract text',
+    async run(ctx) {
+      const pdf = firstPdf(ctx);
+      const perPage = ctx.options.mode === 'pages';
+      let pages = await extractText(pdf.buffer);
+      const blanks = pages.filter((t) => (t || '').trim().length < 12).length;
+      let ocrPages = [];
+      let language = null;
+      if (blanks) {
+        // Pages without a text layer are scans: OCR them once, in a single
+        // pass, and read the text back out of the result. The OCR reports
+        // which language it picked, so nothing has to be guessed twice.
+        const result = await makeSearchable(pdf.buffer, ocrOptions(ctx.options));
+        language = result.report.language;
+        ocrPages = result.report.ocrPages;
+        pages = await extractText(result.buffer);
+      }
+      const base = baseName(pdf.name);
+      const report = { language, ocrPages, pages: pages.length, blankPages: blanks };
+      if (perPage) {
+        const entries = pages.map((text, i) => ({
+          name: `${base}-page-${String(i + 1).padStart(3, '0')}.txt`,
+          data: Buffer.from(withHeader(text, i + 1, pages.length), 'utf8'),
+        }));
+        return Object.assign(file(`${base}-text.zip`, MIME.zip, await zip(entries)), { report });
+      }
+      const body = pages.map((text, i) => withHeader(text, i + 1, pages.length)).join('\n\n');
+      return Object.assign(file(`${base}.txt`, MIME.txt, Buffer.from(body, 'utf8')), { report });
+    },
+  },
+
+  deskew: {
+    label: 'Deskew',
+    async run(ctx) {
+      const pdf = firstPdf(ctx);
+      const { buffer, report } = await deskewPdf(pdf.buffer, {
+        dpi: ctx.options.dpi || 200,
+        deskew: ctx.options.deskew,
+      });
+      const rotated = Object.values(report.angles).filter((a) => a !== 0).length;
+      if (!rotated) throw err('No page needs straightening: every page is already level.', 422);
+      return Object.assign(file(baseName(pdf.name) + '-deskewed.pdf', MIME.pdf, buffer), { report });
+    },
+  },
+
+  'pdf-to-html': {
+    label: 'PDF to HTML',
+    async run(ctx) {
+      const pdf = firstPdf(ctx);
+      const pages = await extractLayout(pdf.buffer);
+      const html = htmlFromLayout(pages, baseName(pdf.name));
+      return file(baseName(pdf.name) + '.html', MIME.html, Buffer.from(html, 'utf8'));
+    },
+  },
+
+  'pdf-to-markdown': {
+    label: 'PDF to Markdown',
+    async run(ctx) {
+      const pdf = firstPdf(ctx);
+      const pages = await extractLayout(pdf.buffer);
+      const md = markdownFromLayout(pages, baseName(pdf.name));
+      return file(baseName(pdf.name) + '.md', 'text/markdown; charset=utf-8', Buffer.from(md, 'utf8'));
     },
   },
 

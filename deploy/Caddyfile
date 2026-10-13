@@ -1,0 +1,27 @@
+# Folio reverse proxy.
+#
+# SITE_ADDRESS comes from the compose environment:
+#   DOMAIN=example.com  -> Caddy requests a certificate for example.com
+#   DOMAIN unset        -> ":80", plain HTTP (no certificate is possible for a
+#                          bare IP address, but the stack is usable immediately)
+# APP_UPSTREAM defaults to the app container on its internal port.
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	# Uploads can be large, so no request-body or timeout surprises.
+	request_body {
+		max_size 64MB
+	}
+
+	reverse_proxy {$APP_UPSTREAM} {
+		transport http {
+			read_timeout 15m
+			write_timeout 15m
+		}
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

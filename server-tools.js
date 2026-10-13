@@ -1,17 +1,76 @@
 /* Folio — UI for the server-side tools.
-   Loaded by app.html after i18n.js. Uses the helpers defined in app.html
-   (fileUploadHTML, setupUpload, showStatus, clearStatus, CATEGORIES) and calls
-   the Folio server API at /api/tools. If the page is opened without a server,
-   the tools explain that instead of failing silently. */
+   Loaded by app.html after icons.js and i18n.js. It uses the helpers app.html
+   exposes on window (fileUploadHTML, setupUpload, showStatus, showFailure,
+   FolioProgress, CATEGORIES, folioIcon) and calls the API at /api/tools. If the
+   page is opened without a server, the panels say so instead of failing
+   silently. */
 (function (global) {
   'use strict';
 
-  // Per-tool upload configuration and option fields.
+  var t = function (key, vars) { return global.FolioI18N.t(key, vars); };
+  var icon = function (name, opts) { return global.folioIcon(name, opts); };
+
+  var YES_NO = [[['ap.opt.on'], 'on'], [['ap.opt.off'], 'off']];
+  function onOff() {
+    return YES_NO.map(function (pair) { return [pair[1], t(pair[0][0])]; });
+  }
+  function select(key, labelKey, choices) {
+    return { key: key, labelKey: labelKey, type: 'select', value: choices[0][0], choices: choices };
+  }
+
+  // Per-tool upload configuration and option fields. Labels are i18n keys so
+  // the whole panel follows the language switch.
   var TOOLS = {
-    'pdf-to-jpg': { accept: '.pdf', options: [{ key: 'scale', label: 'Quality (1-4)', type: 'number', value: '2' }] },
+    'pdf-to-jpg': {
+      accept: '.pdf',
+      options: [{ key: 'scale', labelKey: 'ap.opt.scale', type: 'number', value: '2' }],
+    },
     'pdf-to-ppt': { accept: '.pdf' },
-    'ocr': { accept: '.pdf', options: [{ key: 'lang', label: 'Language', type: 'select', value: 'eng', choices: [['eng', 'English'], ['ita', 'Italiano'], ['spa', 'Español'], ['deu', 'Deutsch'], ['fra', 'Français']] }] },
-    'scan': { accept: '.pdf,.png,.jpg,.jpeg', multi: true, options: [{ key: 'lang', label: 'Language', type: 'select', value: 'eng', choices: [['eng', 'English'], ['ita', 'Italiano'], ['spa', 'Español'], ['deu', 'Deutsch'], ['fra', 'Français']] }] },
+    'ocr': {
+      accept: '.pdf',
+      options: [
+        select('lang', 'ap.opt.lang', [
+          ['auto', t('ap.opt.auto')], ['eng', 'English'], ['ita', 'Italiano'],
+          ['spa', 'Español'], ['deu', 'Deutsch'], ['fra', 'Français'],
+        ]),
+        select('quality', 'ap.opt.quality', [['300', '300'], ['150', '150'], ['200', '200'], ['400', '400']]),
+        select('pageMode', 'ap.opt.pageMode', [
+          ['auto', t('ap.opt.pageMode.auto')], ['block', t('ap.opt.pageMode.block')],
+          ['column', t('ap.opt.pageMode.column')], ['sparse', t('ap.opt.pageMode.sparse')],
+        ]),
+        select('deskew', 'ap.opt.deskew', onOff()),
+      ],
+    },
+    'scan': {
+      accept: '.pdf,.png,.jpg,.jpeg', multi: true,
+      options: [
+        select('lang', 'ap.opt.lang', [
+          ['auto', t('ap.opt.auto')], ['eng', 'English'], ['ita', 'Italiano'],
+          ['spa', 'Español'], ['deu', 'Deutsch'], ['fra', 'Français'],
+        ]),
+        select('quality', 'ap.opt.quality', [['300', '300'], ['150', '150'], ['200', '200'], ['400', '400']]),
+        select('deskew', 'ap.opt.deskew', onOff()),
+      ],
+    },
+    'extract-text': {
+      accept: '.pdf',
+      options: [
+        select('lang', 'ap.opt.lang', [
+          ['auto', t('ap.opt.auto')], ['eng', 'English'], ['ita', 'Italiano'],
+          ['spa', 'Español'], ['deu', 'Deutsch'], ['fra', 'Français'],
+        ]),
+        select('mode', 'ap.opt.mode', [['single', t('ap.opt.mode.single')], ['pages', t('ap.opt.mode.pages')]]),
+      ],
+    },
+    'deskew': {
+      accept: '.pdf',
+      options: [
+        select('dpi', 'ap.opt.dpi', [['200', '200'], ['150', '150'], ['300', '300']]),
+        select('deskew', 'ap.opt.deskew', onOff()),
+      ],
+    },
+    'pdf-to-html': { accept: '.pdf' },
+    'pdf-to-markdown': { accept: '.pdf' },
     'pdf-to-word': { accept: '.pdf' },
     'pdf-to-excel': { accept: '.pdf' },
     'compare': { accept: '.pdf', multi: true },
@@ -20,12 +79,18 @@
     'sign': {
       accept: '.pdf,.png,.jpg,.jpeg', multi: true,
       options: [
-        { key: 'page', label: 'Page', type: 'number', value: '1' },
-        { key: 'widthMm', label: 'Signature width (mm)', type: 'number', value: '50' },
+        { key: 'page', labelKey: 'ap.opt.page', type: 'number', value: '1' },
+        { key: 'widthMm', labelKey: 'ap.opt.sigWidth', type: 'number', value: '50' },
       ],
     },
-    'redact': { accept: '.pdf', options: [{ key: 'rects', label: 'Rectangles (JSON)', type: 'textarea', value: '[{"page":1,"x":50,"y":60,"w":200,"h":40}]' }] },
-    'forms': { accept: '.pdf', options: [{ key: 'fields', label: 'Fields (JSON; empty = list them)', type: 'textarea', value: '' }] },
+    'redact': {
+      accept: '.pdf',
+      options: [{ key: 'rects', labelKey: 'ap.opt.rects', type: 'textarea', value: '[{"page":1,"x":50,"y":60,"w":200,"h":40}]' }],
+    },
+    'forms': {
+      accept: '.pdf',
+      options: [{ key: 'fields', labelKey: 'ap.opt.fields', type: 'textarea', value: '' }],
+    },
     'word-to-pdf': { accept: '.doc,.docx' },
     'ppt-to-pdf': { accept: '.ppt,.pptx' },
     'excel-to-pdf': { accept: '.xls,.xlsx' },
@@ -33,11 +98,14 @@
     'protect': {
       accept: '.pdf',
       options: [
-        { key: 'userPassword', label: 'Open password', type: 'password' },
-        { key: 'ownerPassword', label: 'Edit password', type: 'password' },
+        { key: 'userPassword', labelKey: 'ap.opt.openPassword', type: 'password' },
+        { key: 'ownerPassword', labelKey: 'ap.opt.editPassword', type: 'password' },
       ],
     },
-    'unlock': { accept: '.pdf', options: [{ key: 'password', label: 'PDF password', type: 'password' }] },
+    'unlock': {
+      accept: '.pdf',
+      options: [{ key: 'password', labelKey: 'ap.opt.pdfPassword', type: 'password' }],
+    },
   };
 
   var availability = null;
@@ -53,6 +121,9 @@
     return availabilityPromise;
   }
 
+  function statusId(tool) { return 'st-status-' + tool.id; }
+  function cfgOf(tool) { return TOOLS[tool.id] || { accept: '.pdf' }; }
+
   function optionHTML(o) {
     var inner;
     if (o.type === 'select') {
@@ -64,64 +135,113 @@
     } else {
       inner = '<input type="' + (o.type || 'text') + '" data-opt="' + o.key + '" value="' + (o.value || '') + '" />';
     }
-    return '<div class="control-group"><label>' + o.label + '</label>' + inner + '</div>';
+    var optionsLabel = o.id ? o.id : 'st-opt-' + o.key;
+    return '<div class="control-group"><label for="' + optionsLabel + '">' + t(o.labelKey) + '</label>' + inner + '</div>';
   }
 
-  function ui(tool) {
-    var cfg = TOOLS[tool.id] || { accept: '.pdf' };
+  /* The panel body and footer. app.html wraps them in the shared .tool-panel
+     skeleton, so every server tool has the same structure as a browser tool. */
+  function panel(tool) {
+    var cfg = cfgOf(tool);
     var opts = (cfg.options || []).map(optionHTML).join('');
-    return fileUploadHTML({
-      id: 'st-input-' + tool.id, label: tool.label, accept: cfg.accept, multi: !!cfg.multi, icon: tool.icon,
-    }) +
-      (opts ? '<div class="tool-controls" id="st-opts-' + tool.id + '">' + opts + '</div>' : '') +
-      '<div class="tool-actions"><button class="btn-primary" id="st-btn-' + tool.id + '" disabled>' +
-      '<span>\u25B6</span> ' + FolioI18N.t('ap.server.run') + '</button></div>' +
-      '<div class="tool-status" id="st-status-' + tool.id + '"></div>';
+    return {
+      statusId: statusId(tool),
+      controls: global.fileUploadHTML({
+        id: 'st-input-' + tool.id, label: t('ap.server.pick'), accept: cfg.accept,
+        multi: !!cfg.multi, icon: tool.icon,
+      }) + (opts ? '<div class="tool-controls" id="st-opts-' + tool.id + '">' + opts + '</div>' : ''),
+      actions: '<button class="btn-primary" id="st-btn-' + tool.id + '" disabled>' +
+        icon(tool.icon, { size: 16 }) + '<span>' + t('ap.server.run') + '</span></button>',
+    };
   }
 
   function init(tool) {
     var btn = document.getElementById('st-btn-' + tool.id);
     if (!btn) return;
     var selected = [];
-    setupUpload({
+    global.setupUpload({
       inputId: 'st-input-' + tool.id,
       listId: 'file-list-st-input-' + tool.id,
       zoneId: 'upload-st-input-' + tool.id,
       onFiles: function (f) { selected = f; btn.disabled = selected.length === 0; },
     });
-    btn.addEventListener('click', function () { run(tool, selected, btn); });
+    var run = function () { start(tool, selected, btn); };
+    btn.addEventListener('click', run);
     loadAvailability().then(function (av) {
       if (av && av[tool.id] && av[tool.id].available === false) {
         btn.disabled = true;
-        showStatus('st-status-' + tool.id, 'info', FolioI18N.t('ap.server.unavailable') + ' ' + (av[tool.id].reason || ''));
+        global.showStatus(statusId(tool), 'info', t('ap.server.unavailable') + ' ' + (av[tool.id].reason || ''));
       }
     });
   }
 
   function safeName(n) { return String(n || 'result').replace(/[^\w.-]+/g, '_'); }
 
-  function run(tool, files, btn) {
-    var statusId = 'st-status-' + tool.id;
-    if (!files || !files.length) { showStatus(statusId, 'error', FolioI18N.t('ap.server.needFile')); return; }
-    if (typeof global.fetch !== 'function') { showStatus(statusId, 'error', FolioI18N.t('ap.server.offline')); return; }
-
-    clearStatus(statusId);
-    var original = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> ' + FolioI18N.t('ap.server.busy');
-
-    var opts = {};
+  function readOptions(tool) {
+    var out = {};
     var container = document.getElementById('st-opts-' + tool.id);
     if (container) {
       Array.prototype.forEach.call(container.querySelectorAll('[data-opt]'), function (el) {
-        if (el.value !== '') opts[el.getAttribute('data-opt')] = el.value;
+        if (el.value !== '') out[el.getAttribute('data-opt')] = el.value;
       });
     }
-    var fd = new FormData();
-    Array.prototype.forEach.call(files, function (f) { fd.append('files', f, f.name); });
-    fd.append('options', JSON.stringify(opts));
+    return out;
+  }
 
-    global.fetch('api/tools/' + tool.id, { method: 'POST', body: fd })
+  /* What the server said about the result, in the language of the page. */
+  function reportHTML(tool, headers) {
+    var raw = headers.get('X-Folio-Report');
+    if (!raw) return '';
+    var report;
+    try { report = JSON.parse(raw); } catch (e) { return ''; }
+    var lines = [];
+    var languages = report.languages && report.languages.length ? report.languages : (report.language ? [report.language] : null);
+    if (languages && tool.id === 'ocr' || (languages && tool.id === 'scan')) {
+      lines.push(t('ap.report.language', { lang: languages.join(' + ') }));
+    } else if (languages && tool.id === 'extract-text') {
+      lines.push(t('ap.report.language', { lang: languages.join(' + ') }));
+    }
+    if (report.ocrPages && report.ocrPages.length) lines.push(t('ap.report.ocrPages', { n: report.ocrPages.length }));
+    if (report.blankPages) lines.push(t('ap.report.blankPages', { n: report.blankPages }));
+    if (report.pages) lines.push(t('ap.report.pages', { n: report.pages }));
+    if (report.angles) {
+      var rotated = Object.keys(report.angles).filter(function (k) { return report.angles[k] !== 0; }).length;
+      lines.push(t('ap.report.rotated', { n: rotated }));
+    }
+    if (!lines.length) return '';
+    return '<div class="report">' + lines.join(' &middot; ') + '</div>';
+  }
+
+  function start(tool, files, btn) {
+    var sid = statusId(tool);
+    if (!files || !files.length) { global.showStatus(sid, 'error', t('ap.server.needFile')); return; }
+    if (typeof global.fetch !== 'function') { global.showStatus(sid, 'error', t('ap.server.offline')); return; }
+
+    global.clearStatus(sid);
+    var original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> <span>' + t('ap.server.busy') + '</span>';
+
+    // Server work happens remotely and reports nothing until it is done, so
+    // the bar is indeterminate but the elapsed time and Cancel are real.
+    var task = global.FolioProgress.create(sid, t('ap.server.busy'));
+    var controller = typeof global.AbortController === 'function' ? new global.AbortController() : null;
+    task.onCancel(function () { if (controller) controller.abort(); });
+
+    var fd = new global.FormData();
+    Array.prototype.forEach.call(files, function (f) { fd.append('files', f, f.name); });
+    fd.append('options', JSON.stringify(readOptions(tool)));
+
+    var opts = { method: 'POST', body: fd };
+    if (controller) opts.signal = controller.signal;
+
+    function restore() {
+      task.finish();
+      btn.disabled = false;
+      btn.innerHTML = original;
+    }
+
+    global.fetch('api/tools/' + tool.id, opts)
       .then(function (res) {
         if (!res.ok) {
           return res.json().catch(function () { return {}; }).then(function (j) {
@@ -129,25 +249,36 @@
           });
         }
         var name = safeName(res.headers.get('X-Folio-Filename') || (tool.id + '.out'));
+        var report = reportHTML(tool, res.headers);
         return res.blob().then(function (blob) {
-          var url = URL.createObjectURL(blob);
+          var url = global.URL.createObjectURL(blob);
           var a = document.createElement('a');
-          a.href = url; a.download = name;
-          document.body.appendChild(a); a.click(); a.remove();
-          setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
-          showStatus(statusId, 'success', FolioI18N.t('ap.server.ok') +
-            ' <br/><a class="download-link" href="' + url + '" download="' + name + '">' + FolioI18N.t('ap.download') + '</a>');
+          a.href = url;
+          a.download = name;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          global.setTimeout(function () { global.URL.revokeObjectURL(url); }, 4000);
+          global.showStatus(sid, 'success', t('ap.server.ok') +
+            '<br/><a class="download-link" href="' + url + '" download="' + name + '">' +
+            icon('download', { size: 15 }) + t('ap.download') + '</a>' + report);
         });
       })
-      .catch(function (e) { showStatus(statusId, 'error', (e && e.message) || String(e)); })
-      .then(function () { btn.disabled = false; btn.innerHTML = original; });
+      .catch(function (e) {
+        if (task.cancelled || (e && e.name === 'AbortError')) {
+          global.showStatus(sid, 'info', t('ap.progress.cancelled'));
+          return;
+        }
+        global.showFailure(sid, (e && e.message) || String(e), function () { start(tool, files, btn); });
+      })
+      .then(restore);
   }
 
   function initAll() {
-    CATEGORIES().forEach(function (cat) {
-      cat.tools.forEach(function (t) { if (t.type === 'server') init(t); });
+    global.CATEGORIES().forEach(function (cat) {
+      cat.tools.forEach(function (tool) { if (tool.type === 'server') init(tool); });
     });
   }
 
-  global.FolioServerTools = { ui: ui, initAll: initAll, tools: TOOLS, loadAvailability: loadAvailability };
+  global.FolioServerTools = { panel: panel, initAll: initAll, tools: TOOLS, loadAvailability: loadAvailability };
 })(window);

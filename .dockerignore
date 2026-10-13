@@ -4,3 +4,8 @@ node_modules
 .freebuff
 test
 *.log
+# Language models are fetched inside the image (see the Dockerfile); a local
+# copy must not overwrite them with something the WASM core cannot load.
+server/tessdata
+*.traineddata
+*.traineddata.gz

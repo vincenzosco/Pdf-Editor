@@ -93,25 +93,62 @@ export async function closePdf(doc) {
   }
 }
 
-/** Render each page to an image. Returns [{ page, width, height, data, format }]. */
-export async function rasterizePdf(bytes, { scale = 2, format = 'png', pages = null } = {}) {
+/**
+ * Render pages one at a time and hand each canvas to `fn`. Yielding per page
+ * keeps peak memory at one raster instead of the whole document, which is what
+ * makes the 300 DPI OCR path viable on A0-class pages.
+ *
+ * `scale` may be a number or a function `(widthPt, heightPt) => number` so the
+ * caller can pick a scale per page (e.g. a fixed DPI with a pixel budget).
+ *
+ * `fn` receives: page (1-based), canvas, width, height (pixels), scale,
+ * rotation (the page's /Rotate value), viewport, and `toPdfPoint(x, y)` which
+ * maps a viewport pixel coordinate back to PDF user space (bottom-left origin,
+ * unrotated page) — that is what makes the invisible text layer line up on
+ * rotated pages.
+ */
+export async function forEachRender(bytes, { scale = 2, pages = null } = {}, fn) {
   const doc = await openPdf(bytes);
-  const out = [];
-  const wanted = pages || Array.from({ length: doc.numPages }, (_, i) => i + 1);
-  for (const n of wanted) {
-    if (n < 1 || n > doc.numPages) continue;
-    const page = await doc.getPage(n);
-    const viewport = page.getViewport({ scale });
-    const factory = new NodeCanvasFactory();
-    const cc = factory.create(viewport.width, viewport.height);
-    await page.render({ canvasContext: cc.context, viewport, canvasFactory: factory }).promise;
-    const data = format === 'jpg'
-      ? cc.canvas.toBuffer('image/jpeg', 90)
-      : cc.canvas.toBuffer('image/png');
-    out.push({ page: n, width: Math.round(viewport.width), height: Math.round(viewport.height), data, format });
-    factory.destroy(cc);
+  try {
+    const wanted = pages || Array.from({ length: doc.numPages }, (_, i) => i + 1);
+    for (const n of wanted) {
+      if (n < 1 || n > doc.numPages) continue;
+      const page = await doc.getPage(n);
+      const base = page.getViewport({ scale: 1 });
+      const s = typeof scale === 'function' ? scale(base.width, base.height) : scale;
+      const viewport = page.getViewport({ scale: s });
+      const factory = new NodeCanvasFactory();
+      const cc = factory.create(viewport.width, viewport.height);
+      try {
+        await page.render({ canvasContext: cc.context, viewport, canvasFactory: factory }).promise;
+        await fn({
+          page: n,
+          canvas: cc.canvas,
+          width: Math.round(viewport.width),
+          height: Math.round(viewport.height),
+          scale: s,
+          rotation: ((page.rotate % 360) + 360) % 360,
+          viewport,
+          toPdfPoint: (x, y) => viewport.convertToPdfPoint(x, y),
+        });
+      } finally {
+        factory.destroy(cc);
+      }
+    }
+  } finally {
+    await closePdf(doc);
   }
-  await closePdf(doc);
+}
+
+/** Render each page to a compressed image. Returns [{ page, width, height, data, format }]. */
+export async function rasterizePdf(bytes, { scale = 2, format = 'png', pages = null } = {}) {
+  const out = [];
+  await forEachRender(bytes, { scale, pages }, ({ page, canvas, width, height }) => {
+    const data = format === 'jpg'
+      ? canvas.toBuffer('image/jpeg', 90)
+      : canvas.toBuffer('image/png');
+    out.push({ page, width, height, data, format });
+  });
   return out;
 }
 
@@ -132,6 +169,62 @@ export async function extractText(bytes) {
   }
   await closePdf(doc);
   return pages;
+}
+
+/**
+ * Text with positions, for the HTML and Markdown converters.
+ * Coordinates come from the page viewport, so they are already in reading
+ * order space (top-left origin, rotation applied): `x` grows right, `y` grows
+ * down, and both are in PDF points at scale 1.
+ */
+export async function extractLayout(bytes) {
+  const doc = await openPdf(bytes);
+  const out = [];
+  try {
+    for (let n = 1; n <= doc.numPages; n++) {
+      const page = await doc.getPage(n);
+      const viewport = page.getViewport({ scale: 1 });
+      const content = await page.getTextContent();
+      const items = [];
+      for (const it of content.items) {
+        if (typeof it.str !== 'string' || !it.str.trim()) continue;
+        const t = it.transform;
+        const [x, y] = viewport.convertToViewportPoint(t[4], t[5]);
+        const size = Math.hypot(t[2], t[3]) || Math.abs(t[3]) || 10;
+        items.push({ str: it.str, x, y, w: it.width || 0, size, eol: !!it.hasEOL });
+      }
+      out.push({ page: n, width: viewport.width, height: viewport.height, items });
+    }
+  } finally {
+    await closePdf(doc);
+  }
+  return out;
+}
+
+/**
+ * Group positioned items into lines, then lines into paragraphs.
+ * Used by both converters so they agree on what a line is.
+ */
+export function groupLines(pageData) {
+  const items = [...pageData.items].sort((a, b) => (a.y - b.y) || (a.x - b.x));
+  const lines = [];
+  for (const it of items) {
+    const last = lines[lines.length - 1];
+    const tolerance = Math.max(2, it.size * 0.5);
+    if (last && Math.abs(last.y - it.y) <= tolerance) {
+      last.items.push(it);
+      last.y = Math.min(last.y, it.y);
+      last.size = Math.max(last.size, it.size);
+    } else {
+      lines.push({ y: it.y, size: it.size, items: [it] });
+    }
+  }
+  for (const line of lines) {
+    line.items.sort((a, b) => a.x - b.x);
+    line.text = line.items.map((i) => i.str).join('').replace(/\s+/g, ' ').trim();
+    line.x = line.items.length ? line.items[0].x : 0;
+  }
+  return lines.filter((l) => l.text);
 }
 
 /* ------------------------------- pdf-lib glue ----------------------------- */

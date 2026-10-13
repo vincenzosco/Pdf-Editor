@@ -5,7 +5,11 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "test": "node --test"
+    "test": "node --test --test-force-exit",
+    "test:server": "node --test --test-force-exit server/test",
+    "test:client": "node --test --test-force-exit test",
+    "test:ci": "node --test --test-force-exit --test-concurrency=1",
+    "tessdata": "node scripts/fetch-tessdata.mjs"
   },
   "repository": {
     "type": "git",
